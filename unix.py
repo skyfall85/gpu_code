@@ -8,7 +8,7 @@ import sys
 import time
 
 global GPUID
-GPUID=1
+GPUID=0
 
 def create_folders_for_parameters(input_file, output_file):
     
@@ -82,6 +82,7 @@ def create_folders_for_parameters(input_file, output_file):
             subp.call(["mv",filename,foldername])
             subp.call(["cp","maggrad_ocl",foldername])
             subp.call(["cp","kernel.cl",foldername])
+            subp.call(["cp","init_functions.cl",foldername])
 
       # run the simulation in the subfolder:
             wd=os.getcwd()

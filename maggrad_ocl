@@ -393,7 +393,9 @@ def main():
   WG_SIZE=WORK_GROUP_SIZE
 
  # read in the kernel file and insert the global parameters:
+  with open('init_functions.cl') as f: init_src = f.read() 
   with open('kernel.cl') as f: program_src = f.read()
+  program_src=program_src.replace('<INIT_FUNCTIONS>',init_src)
   program_src = insert_global_vars(program_src)
   with open('kernel_src.cl', 'w') as f: f.write(program_src)
 
