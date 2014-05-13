@@ -438,6 +438,12 @@ def main():
 
   if INITIAL_SHAPE==1:
     program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
+  if INITIAL_SHAPE==2:
+    x0=np.float64(0.5*XSIZE)
+    y0=np.float64(0.5*YSIZE)
+    radius=np.float64(5.0)
+    start_orientation_1=np.float64(0.25)
+    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
 
 
   number_of_nucleus=0
