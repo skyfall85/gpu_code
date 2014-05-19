@@ -671,7 +671,7 @@ __kernel void phase_field_update(__global double* Phi,
  switch(MODELL)
  {
      case 1: //this is the maggrad-model
-     tmp=-3.0*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     tmp=-D_P_PHI(phi)*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
      phidot=phidot+tmp;
      break;
 
@@ -873,17 +873,17 @@ __kernel void orientation_field_update(__global double* PHI,
  switch(MODELL)
  {
   case 1:
-   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
-   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
+   // p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
+   // p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
 
-   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
-   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
+   // p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
+   // p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
   
-//    p_xpf=P_PHI_XPF(phi,phi_xp);
-//    p_xmf=P_PHI_XMF(phi,phi_xm);
-// 
-//    p_ypf=P_PHI_YPF(phi,phi_yp);
-//    p_ymf=P_PHI_YMF(phi,phi_ym);
+   p_xpf=P_PHI_XPF(phi,phi_xp);
+   p_xmf=P_PHI_XMF(phi,phi_xm);
+
+   p_ypf=P_PHI_YPF(phi,phi_yp);
+   p_ymf=P_PHI_YMF(phi,phi_ym);
 
 
  /**
