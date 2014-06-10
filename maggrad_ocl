@@ -445,6 +445,11 @@ def main():
     start_orientation_1=np.float64(0.25)
     program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
 
+  if INITIAL_SHAPE==3:
+    radius=np.float64(20.0)
+    program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
+
+
 
   number_of_nucleus=0
   if number_of_nucleus>0:
