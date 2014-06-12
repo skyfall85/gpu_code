@@ -685,6 +685,11 @@ __kernel void phase_field_update(__global double* Phi,
      tmp=-D_P_PHI(phi)*(DLESS_HT*F_ORI( ori, ori_xp, ori_xm, ori_yp, ori_ym));
      phidot=phidot+tmp;
      break;
+
+     case 4: //this is the maggrad-model, but with phi**3 coefficient function
+     tmp=-3.0*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;
+     break;
  }
 
 
@@ -870,6 +875,12 @@ __kernel void orientation_field_update(__global double* PHI,
  double phi_xpf, phi_xmf, phi_ypf, phi_ymf;
  double qfi_xpf, qfi_xmf, qfi_ypf, qfi_ymf;
 
+ double grad_y_xpf, grad_y_xmf, grad_x_ypf, grad_x_ymf;
+ double abs_grad_xpf, abs_grad_xmf, abs_grad_ypf, abs_grad_ymf;
+ double ref=1.0e-9;
+ double px_p, px_m, py_p, py_m;
+ double divgrad;
+
  switch(MODELL)
  {
   case 1:
@@ -894,23 +905,20 @@ __kernel void orientation_field_update(__global double* PHI,
  xmym|ym|xmyp
      |  |
  */
-   double grad_y_xpf, grad_y_xmf, grad_x_ypf, grad_x_ymf;
+   
 
    grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
    grad_x_ymf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpym,ori_ym)+ANGDIFF(ori_ym,ori_xmym))/4.0;
    grad_y_xpf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xpyp,ori_xp)+ANGDIFF(ori_xp,ori_xpym))/4.0;
    grad_y_xmf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xmyp,ori_xm)+ANGDIFF(ori_xm,ori_xmym))/4.0;
 
-   double abs_grad_xpf, abs_grad_xmf, abs_grad_ypf, abs_grad_ymf;
+   
 
    abs_grad_xpf=sqrt(grad_xpf*grad_xpf+grad_y_xpf*grad_y_xpf);
    abs_grad_xmf=sqrt(grad_xmf*grad_xmf+grad_y_xmf*grad_y_xmf);
 
    abs_grad_ypf=sqrt(grad_x_ypf*grad_x_ypf+grad_ypf*grad_ypf);
    abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
-
-   double ref=1.0e-9;
-   double px_p, px_m, py_p, py_m;
 
    if(abs_grad_xpf<ref)    px_p=0.0; 
    else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
@@ -926,7 +934,7 @@ __kernel void orientation_field_update(__global double* PHI,
    part_x=(px_p-px_m)/DX;
    part_y=(py_p-py_m)/DX;
 
-   double divgrad=part_x+part_y;
+   divgrad=part_x+part_y;
 
 // deterministic term of the EOM:
    oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
@@ -1025,6 +1033,47 @@ __kernel void orientation_field_update(__global double* PHI,
    oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
 
   break;
+
+  case 4:
+   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
+   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
+
+   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
+   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
+
+
+   grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
+   grad_x_ymf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpym,ori_ym)+ANGDIFF(ori_ym,ori_xmym))/4.0;
+   grad_y_xpf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xpyp,ori_xp)+ANGDIFF(ori_xp,ori_xpym))/4.0;
+   grad_y_xmf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xmyp,ori_xm)+ANGDIFF(ori_xm,ori_xmym))/4.0;
+
+   abs_grad_xpf=sqrt(grad_xpf*grad_xpf+grad_y_xpf*grad_y_xpf);
+   abs_grad_xmf=sqrt(grad_xmf*grad_xmf+grad_y_xmf*grad_y_xmf);
+
+   abs_grad_ypf=sqrt(grad_x_ypf*grad_x_ypf+grad_ypf*grad_ypf);
+   abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
+
+   double ref=1.0e-9;
+
+   if(abs_grad_xpf<ref)    px_p=0.0; 
+   else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
+   if(abs_grad_xmf<ref)    px_m=0.0; 
+   else px_m=(p_xmf*grad_xmf/abs_grad_xmf);
+   if(abs_grad_ypf<ref)    py_p=0.0; 
+   else py_p=(p_ypf*grad_ypf/abs_grad_ypf);
+   if(abs_grad_ymf<ref)    py_m=0.0; 
+   else py_m=(p_ymf*grad_ymf/abs_grad_ymf);
+
+
+
+   part_x=(px_p-px_m)/DX;
+   part_y=(py_p-py_m)/DX;
+
+   divgrad=part_x+part_y;
+
+// deterministic term of the EOM:
+   oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
+  break;  
 }
 // noise term in the EOM:
  double noise;

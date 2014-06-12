@@ -449,7 +449,11 @@ def main():
     radius=np.float64(20.0)
     program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
+  if INITIAL_SHAPE==4:
+  	program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
 
+  if INITIAL_SHAPE==5:
+  	program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
   number_of_nucleus=0
   if number_of_nucleus>0:

@@ -184,3 +184,54 @@ __kernel void insert_four_rectangles(__global double* Phi, __global double* C,
  
 }
 
+__kernel void insert_two_rectangles(__global double* Phi, __global double* C,
+ __global double* Ori){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+
+ if (x<=XSIZE*0.5) ori=0.3;
+ if (x>XSIZE*0.5 ) ori=0.7;
+ phi=0.7;
+ c=C_0;
+
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
+ 
+}
+
+__kernel void insert_two_rectangles_noise_between(__global double* Phi, __global double* C,
+ __global double* Ori, __global mwc64x_state_t* RandState){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+ mwc64x_state_t rng = RandState[n];
+ double ori_rand_term=random_uniform(&rng);
+ RandState[n] = rng;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+ 
+ if (x<=XSIZE*0.2) {ori=0.3;phi=0.7;}
+ if (x>XSIZE*0.8 ) {ori=0.7;phi=0.7;}
+ if (x>XSIZE*0.2 && x<XSIZE*0.8){phi=0.0;ori=ori_rand_term;}
+ 
+ c=C_0;
+
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
+ 
+}
