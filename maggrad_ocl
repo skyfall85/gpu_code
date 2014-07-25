@@ -455,6 +455,21 @@ def main():
   if INITIAL_SHAPE==5:
   	program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
+  if INITIAL_SHAPE==6:
+    num_of_nn=3
+    x0=np.float64(0.5*XSIZE)
+    y0=np.float64(0.5*YSIZE)
+    radius=np.float64(5.0)
+    dist_nn=50.0
+    start_orientation_1=np.float64(0.25)
+    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
+    for ind_nn in range(0,num_of_nn):
+      x0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.cos(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
+      y0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.sin(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
+      start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
+      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
+
+
   number_of_nucleus=0
   if number_of_nucleus>0:
    # initialise the nucleus:
