@@ -860,6 +860,11 @@ __kernel void orientation_field_update(__global double* PHI,
  double phi_yp=PHI[YP];
  double phi_ym=PHI[YM];
 
+ double phi_xpyp=PHI[XPYP];
+ double phi_xpym=PHI[XPYM];
+ double phi_xmyp=PHI[XMYP];
+ double phi_xmym=PHI[XMYM];
+
  double grad_xpf, grad_xmf, grad_ypf, grad_ymf;
 
  grad_xpf=ANGDIFF(ori_xp,ori);
@@ -875,11 +880,24 @@ __kernel void orientation_field_update(__global double* PHI,
  double phi_xpf, phi_xmf, phi_ypf, phi_ymf;
  double qfi_xpf, qfi_xmf, qfi_ypf, qfi_ymf;
 
+ double phi_xpf_ypf,phi_xmf_ymf,phi_xpf_ymf,phi_xmf_ypf;
+ double qfi_xpf_ypf,qfi_xmf_ymf,qfi_xpf_ymf,qfi_xmf_ypf;
+
  double grad_y_xpf, grad_y_xmf, grad_x_ypf, grad_x_ymf;
  double abs_grad_xpf, abs_grad_xmf, abs_grad_ypf, abs_grad_ymf;
  double ref=1.0e-9;
  double px_p, px_m, py_p, py_m;
  double divgrad;
+
+ // new terms necessery for the 9 point Laplacian
+ double grad_xy_xpf_ypf,grad_xy_xmf_ymf,grad_xy_xmf_ypf,grad_xy_xpf_ymf;
+
+ grad_xy_xpf_ypf=ANGDIFF(ori_xpyp,ori);
+ grad_xy_xmf_ymf=ANGDIFF(ori,ori_xmym);
+ grad_xy_xpf_ymf=ANGDIFF(ori_xpym,ori);
+ grad_xy_xmf_ypf=ANGDIFF(ori,ori_xmyp);
+
+ double part_xy_plus, part_xy_minus;
 
  switch(MODELL)
  {
@@ -900,7 +918,7 @@ __kernel void orientation_field_update(__global double* PHI,
  /**
  xmyp|yp|xpyp
  ____|__|____
-   ym|n |  yp
+   xm|n |  xp
  ____|__|____
  xmym|ym|xmyp
      |  |
@@ -949,6 +967,11 @@ __kernel void orientation_field_update(__global double* PHI,
    phi_ypf=(phi_yp+phi)/2.0;
    phi_ymf=(phi_ym+phi)/2.0;
 
+   phi_xpf_ypf=(phi+phi_xpyp)/2.0;
+   phi_xpf_ymf=(phi+phi_xpym)/2.0;
+   phi_xmf_ypf=(phi+phi_xmyp)/2.0;
+   phi_xmf_ymf=(phi+phi_xmym)/2.0;
+
    qfi_xpf=Q_PHI(phi_xpf);
    qfi_xmf=Q_PHI(phi_xmf);
    qfi_ypf=Q_PHI(phi_ypf);
@@ -960,12 +983,25 @@ __kernel void orientation_field_update(__global double* PHI,
    grad_ypf=grad_ypf/DX;
    grad_ymf=grad_ymf/DX;
 
+   qfi_xpf_ypf=Q_PHI(phi_xpf_ypf);
+   qfi_xpf_ymf=Q_PHI(phi_xpf_ymf);
+   qfi_xmf_ypf=Q_PHI(phi_xmf_ypf);
+   qfi_xmf_ymf=Q_PHI(phi_xmf_ymf);
+
+   grad_xy_xpf_ypf=grad_xy_xpf_ypf/(2.0*DX);
+   grad_xy_xpf_ymf=grad_xy_xpf_ymf/(2.0*DX);
+   grad_xy_xmf_ypf=grad_xy_xmf_ypf/(2.0*DX);
+   grad_xy_xmf_ymf=grad_xy_xmf_ymf/(2.0*DX);
+
    part_x=(qfi_xpf*grad_xpf-qfi_xmf*grad_xmf)/(DX);
    part_y=(qfi_ypf*grad_ypf-qfi_ymf*grad_ymf)/(DX);
 
+   part_xy_plus= (qfi_xpf_ypf*grad_xy_xpf_ypf-qfi_xmf_ymf*grad_xy_xmf_ymf)/DX;
+   part_xy_minus=(qfi_xpf_ymf*grad_xy_xpf_ymf-qfi_xmf_ypf*grad_xy_xmf_ypf)/DX;
+
    double mobility;
    mobility=(DLESS_M_THETA_S_PLAPP+(1.0-P_PHI(phi))*(DLESS_M_THETA_L_PLAPP-DLESS_M_THETA_S_PLAPP))*(1.0-phi)*(1.0-phi)*(1.0-phi);
-   oridot=mobility*(part_x+part_y);
+   oridot=mobility*(2.0*(part_x+part_y)+(part_xy_plus+part_xy_minus))/3.0;
 
   break;
 
