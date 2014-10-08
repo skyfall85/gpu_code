@@ -469,6 +469,15 @@ def main():
       start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
       program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
 
+  if INITIAL_SHAPE==7:
+    for i_ind in range(0,32,1):
+      for j_ind in range(0,32,1):
+        x0=np.float64(16+32*i_ind)
+        y0=np.float64(16+32*j_ind)
+        radius=np.float64(16.0)
+        start_orientation_1=np.float64(random.uniform(0,1))
+        program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
+
 
   number_of_nucleus=0
   if number_of_nucleus>0:

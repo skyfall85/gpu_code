@@ -235,3 +235,27 @@ __kernel void insert_two_rectangles_noise_between(__global double* Phi, __global
  Ori[n]=fmod(mod1+1.0,1.0);
  
 }
+
+__kernel void insert_rectangle(__global double* Phi, __global double* C,
+ __global double* Ori, const double X0, const double Y0, const double A0,const double start_orientation, __global mwc64x_state_t* RandState){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+ mwc64x_state_t rng = RandState[n];
+ double ori_rand_term=random_uniform(&rng);
+ RandState[n] = rng;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+ 
+ 
+ if ((X0-A0)<x && x<=(X0+A0) && (Y0-A0)<y && y<=(Y0+A0)) 
+ {
+ 	Phi[n]=0.8;
+ 	Ori[n]=start_orientation;
+ 	C[n]=C_0;
+ }
+ 
+}
