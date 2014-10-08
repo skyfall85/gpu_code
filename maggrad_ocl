@@ -478,6 +478,9 @@ def main():
         start_orientation_1=np.float64(random.uniform(0,1))
         program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
 
+  if INITIAL_SHAPE==8:
+    program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, RandState_buffer)
+
 
   number_of_nucleus=0
   if number_of_nucleus>0:

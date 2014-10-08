@@ -259,3 +259,52 @@ __kernel void insert_rectangle(__global double* Phi, __global double* C,
  }
  
 }
+
+__kernel void insert_orientation_defect_conf(__global double* Phi, __global double* C,  __global double* Ori, __global mwc64x_state_t* RandState){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+ mwc64x_state_t rng = RandState[n];
+ double ori_rand_term=random_uniform(&rng);
+ RandState[n] = rng;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+ 
+
+if (x<XSIZE*0.5)
+{
+	Phi[n]=(1.0+tanh((0.4*XSIZE-x)*0.0625))*0.5;
+	Ori[n]=0.4*Phi[n]+(1.0-Phi[n])*random_uniform(&rng);
+}
+
+if (x>XSIZE*0.5)
+{
+	Phi[n]=(1.0+tanh((x-0.6*XSIZE)*0.0625))*0.5;
+	Ori[n]=0.8*Phi[n]+(1.0-Phi[n])*random_uniform(&rng);
+}
+
+
+ 
+ double rx2=(x-XSIZE*0.5)*(x-XSIZE*0.5);
+ double ry2=(y-YSIZE*0.5)*(y-YSIZE*0.5);
+
+ double r=sqrt(rx2+ry2);
+
+double r_0=50.0;
+
+ if (r<r_0){
+  phi=(1.0-tanh((r-r_0/2.0)*0.5))/2.0;
+  double ori_ref=(1.0-tanh((r-(3+r_0/2.0))*0.5))/2.0;
+  c=C_0;
+  ori=0.1+(1.0-ori_ref)*ori_rand_term;
+  
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);;
+ }
+ 
+}
