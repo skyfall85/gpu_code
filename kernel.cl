@@ -394,18 +394,17 @@ double D_P_PHI(double PHI){
 /**--------------------------------------------------------*/
 // thermodinamic driving force term in the phase field EOM:
 double DF(double CONC ){
-  return DLESS_DH_F_CU_PF*CONC*(1.0-T_0/T_M_CU)+DLESS_DH_F_NI_PF*(1.0-CONC)*(1.0-T_0/T_M_NI);
-//  double p1=DLESS_DH_F_CU_PF;
-//  double p2=CONC;
-//  double p3=(1.0-T/T_M_CU);
-//  double p4=DLESS_DH_F_NI_PF;
-//  double p5=(1.0-CONC);
-//  double p6=(1.0-T/T_M_NI);
-
-//  return DLESS_DH_F_CU_PF*CONC+DLESS_DH_F_NI_PF*(1.0-CONC);
-
-
+  double retval;
+  switch(ONE_OR_TWO_COMP){
+    case 1:
+      retval=DLESS_DH_F_NI_PF*(1.0-T_0/T_M_NI);
+    break;
+    case 2:
+     retval=DLESS_DH_F_CU_PF*CONC*(1.0-T_0/T_M_CU)+DLESS_DH_F_NI_PF*(1.0-CONC)*(1.0-T_0/T_M_NI);
 }
+  return retval;
+}
+
 
 /**--------------------------------------------------------*/
 // Orientation field term in the phase field EOM:
@@ -675,21 +674,43 @@ __kernel void phase_field_update(__global double* Phi,
      phidot=phidot+tmp;
      break;
 
-     case 2: // this is the modified Plapp-model:
+     case 2: //this is the maggrad-model, but with phi**3 coefficient function (Orientation EOM with 4 point Laplacian)
+     tmp=-3.0*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;
+     break;
+
+     case 3: //this is the maggrad-model, but with phi**3 coefficient function (Orientation EOM with 9 point Laplacian)
+     tmp=-3.0*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;
+     break;
+
+     case 4: //this is the maggrad-model, but with phi**4 coefficient function (Orientation EOM with 9 point Laplacian)
+     tmp=-4.0*phi*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;
+     break;
+
+     case 5: // this is the sidebranching case:
+     tmp=-D_P_PHI(phi)*(DLESS_HT*F_ORI( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;
+     break;
+
+     case 6: // this is the modified Plapp-model: (Orientation EOM with 4 point Laplacian)
      tmp=-D_Q_PHI(phi)*(DLESS_HT_PLAPP*ABSGRAD2_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
      //tmp=0.0;
      phidot=phidot+tmp;
      break;
 
-     case 3: // this is the sidebranching case:
-     tmp=-D_P_PHI(phi)*(DLESS_HT*F_ORI( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     case 7: // this is the modified Plapp-model: (Orientation EOM with 9 point Laplacian)
+     tmp=-D_Q_PHI(phi)*(DLESS_HT_PLAPP*ABSGRAD2_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     //tmp=0.0;
      phidot=phidot+tmp;
+     break;  
+     
+     case 8: // this is the maggrad-model, but with phi**4 coefficient function and with a grad**2 theta term 
+     tmp=-4.0*phi*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym)+DLESS_HT_PLAPP*ABSGRAD2_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
+     phidot=phidot+tmp;   
      break;
 
-     case 4: //this is the maggrad-model, but with phi**3 coefficient function
-     tmp=-3.0*phi*phi*(DLESS_HT*ABSGRAD_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
-     phidot=phidot+tmp;
-     break;
  }
 
 
@@ -913,8 +934,29 @@ __kernel void orientation_field_update(__global double* PHI,
  grad_xy_xmf_ypf=grad_xy_xmf_ypf/(2.0*DX);
  grad_xy_xmf_ymf=grad_xy_xmf_ymf/(2.0*DX);
 
+ double mobility;
+ double p_xpf_ypf,p_xpf_ymf,p_xmf_ypf,p_xmf_ymf;
+ double abs_grad_xpf_ypf,abs_grad_xpf_ymf,abs_grad_xmf_ypf,abs_grad_xmf_ymf;
+
+ 
+ double p_cross_xpf_ypf,p_cross_xpf_ymf,p_cross_xmf_ypf,p_cross_xmf_ymf;
+
  switch(MODELL)
  {
+/*******************************************************************
+OPTIONS:
+CASE 1: MAGGRAD MODEL WITH P(PHI) COEFFIECIONT FUNCTION
+CASE 2: MAGGRAD MODEL WITH PHI3 COEFFIECIONT FUNCTION: 4 POINT LAPLACIAN 
+CASE 3: MAGGRAD MODEL WITH PHI3 COEFFIECIONT FUNCTION: 9 POINT LAPLACIAN
+CASE 4: MAGGRAD MODEL WITH PHI4 COEFFIECIONT FUNCTION: 9 POINT LAPLACIAN
+CASE 5: MAGGRAD MODEL SIDEBRANCHING
+CASE 6: PLAPP MODEL: 4 POINT LAPLACIAN
+CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
+*******************************************************************/
+
+/*****************************************************************************************
+            MAGGRAD MODELL WITH P(PHI) COEFFIECIONT FUNCTION 4 POINT LAPLACIAN
+*****************************************************************************************/
   case 1:
   
    p_xpf=P_PHI_XPF(phi,phi_xp);
@@ -967,45 +1009,229 @@ __kernel void orientation_field_update(__global double* PHI,
    oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
   break;
 
+/*****************************************************************************************
+            MAGGRAD MODELL WITH PHI3 COEFFIECIONT FUNCTION 4 POINT LAPLACIAN
+*****************************************************************************************/
+
   case 2:
-  // this is the gradtheta2 model:
+  
+   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
+   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
+
+   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
+   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
 
 
-   phi_xpf=(phi_xp+phi)/2.0;
-   phi_xmf=(phi_xm+phi)/2.0;
-   phi_ypf=(phi_yp+phi)/2.0;
-   phi_ymf=(phi_ym+phi)/2.0;
-
-   qfi_xpf=Q_PHI(phi_xpf);
-   qfi_xmf=Q_PHI(phi_xmf);
-   qfi_ypf=Q_PHI(phi_ypf);
-   qfi_ymf=Q_PHI(phi_ymf);
+ /**
+ xmyp|yp|xpyp
+ ____|__|____
+   xm|n |  xp
+ ____|__|____
+ xmym|ym|xmyp
+     |  |
+ */
    
-   //since at model 1 we do not need the gradient, just the ANGDIFF, in this case we have to divide by DX:
-   grad_xpf=grad_xpf/DX;
-   grad_xmf=grad_xmf/DX;
-   grad_ypf=grad_ypf/DX;
-   grad_ymf=grad_ymf/DX;
 
-   qfi_xpf_ypf=Q_PHI(phi_xpf_ypf);
-   qfi_xpf_ymf=Q_PHI(phi_xpf_ymf);
-   qfi_xmf_ypf=Q_PHI(phi_xmf_ypf);
-   qfi_xmf_ymf=Q_PHI(phi_xmf_ymf);
+   grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
+   grad_x_ymf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpym,ori_ym)+ANGDIFF(ori_ym,ori_xmym))/4.0;
+   grad_y_xpf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xpyp,ori_xp)+ANGDIFF(ori_xp,ori_xpym))/4.0;
+   grad_y_xmf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xmyp,ori_xm)+ANGDIFF(ori_xm,ori_xmym))/4.0;
 
-   part_x=(qfi_xpf*grad_xpf-qfi_xmf*grad_xmf)/(DX);
-   part_y=(qfi_ypf*grad_ypf-qfi_ymf*grad_ymf)/(DX);
+   
 
-   part_xy_plus= (qfi_xpf_ypf*grad_xy_xpf_ypf-qfi_xmf_ymf*grad_xy_xmf_ymf)/DX;
-   part_xy_minus=(qfi_xpf_ymf*grad_xy_xpf_ymf-qfi_xmf_ypf*grad_xy_xmf_ypf)/DX;
+   abs_grad_xpf=sqrt(grad_xpf*grad_xpf+grad_y_xpf*grad_y_xpf);
+   abs_grad_xmf=sqrt(grad_xmf*grad_xmf+grad_y_xmf*grad_y_xmf);
 
-   double mobility;
-   mobility=(DLESS_M_THETA_S_PLAPP+(1.0-P_PHI(phi))*(DLESS_M_THETA_L_PLAPP-DLESS_M_THETA_S_PLAPP))*(1.0-phi)*(1.0-phi)*(1.0-phi);
-   oridot=mobility*(2.0*(part_x+part_y)+(part_xy_plus+part_xy_minus))/3.0;
-   //oridot=mobility*(part_x+part_y);
+   abs_grad_ypf=sqrt(grad_x_ypf*grad_x_ypf+grad_ypf*grad_ypf);
+   abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
 
+   if(abs_grad_xpf<ref)    px_p=0.0; 
+   else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
+   if(abs_grad_xmf<ref)    px_m=0.0; 
+   else px_m=(p_xmf*grad_xmf/abs_grad_xmf);
+   if(abs_grad_ypf<ref)    py_p=0.0; 
+   else py_p=(p_ypf*grad_ypf/abs_grad_ypf);
+   if(abs_grad_ymf<ref)    py_m=0.0; 
+   else py_m=(p_ymf*grad_ymf/abs_grad_ymf);
+
+
+
+   part_x=(px_p-px_m)/DX;
+   part_y=(py_p-py_m)/DX;
+
+   divgrad=part_x+part_y;
+
+// deterministic term of the EOM:
+   oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
   break;
 
+/*****************************************************************************************
+            MAGGRAD MODELL WITH PHI3 COEFFIECIONT FUNCTION 9 POINT LAPLACIAN
+*****************************************************************************************/
+
   case 3:
+   // here come the 9 point Laplacian:
+
+   
+   grad_xy_xpf_ypf_paralell=ANGDIFF(ori_xp,ori_yp)/(2.0*DX);
+   grad_xy_xpf_ymf_paralell=ANGDIFF(ori_xp,ori_ym)/(2.0*DX);
+   grad_xy_xmf_ypf_paralell=ANGDIFF(ori_yp,ori_xm)/(2.0*DX);
+   grad_xy_xmf_ymf_paralell=ANGDIFF(ori_ym,ori_xm)/(2.0*DX);
+
+   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
+   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
+
+   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
+   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
+   
+   // 9 point Laplacian terms:
+   p_xpf_ypf=(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf);
+   p_xpf_ymf=(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf);
+   p_xmf_ypf=(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf);
+   p_xmf_ymf=(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf);
+
+
+   grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
+   grad_x_ymf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpym,ori_ym)+ANGDIFF(ori_ym,ori_xmym))/4.0;
+   grad_y_xpf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xpyp,ori_xp)+ANGDIFF(ori_xp,ori_xpym))/4.0;
+   grad_y_xmf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xmyp,ori_xm)+ANGDIFF(ori_xm,ori_xmym))/4.0;
+
+   abs_grad_xpf=sqrt(grad_xpf*grad_xpf+grad_y_xpf*grad_y_xpf);
+   abs_grad_xmf=sqrt(grad_xmf*grad_xmf+grad_y_xmf*grad_y_xmf);
+
+   abs_grad_ypf=sqrt(grad_x_ypf*grad_x_ypf+grad_ypf*grad_ypf);
+   abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
+
+   // 9 point Laplacian terms:
+    abs_grad_xpf_ypf=sqrt(grad_xy_xpf_ypf*grad_xy_xpf_ypf+grad_xy_xpf_ypf_paralell*grad_xy_xpf_ypf_paralell);
+    abs_grad_xpf_ymf=sqrt(grad_xy_xpf_ymf*grad_xy_xpf_ymf+grad_xy_xpf_ymf_paralell*grad_xy_xpf_ymf_paralell);
+    abs_grad_xmf_ypf=sqrt(grad_xy_xmf_ypf*grad_xy_xmf_ypf+grad_xy_xmf_ypf_paralell*grad_xy_xmf_ypf_paralell);
+    abs_grad_xmf_ymf=sqrt(grad_xy_xmf_ymf*grad_xy_xmf_ymf+grad_xy_xmf_ymf_paralell*grad_xy_xmf_ymf_paralell);
+
+   ref=1.0e-9;
+
+   // 9 point Laplacian terms:
+   
+
+   if(abs_grad_xpf<ref)    px_p=0.0; 
+   else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
+   if(abs_grad_xmf<ref)    px_m=0.0; 
+   else px_m=(p_xmf*grad_xmf/abs_grad_xmf);
+   if(abs_grad_ypf<ref)    py_p=0.0; 
+   else py_p=(p_ypf*grad_ypf/abs_grad_ypf);
+   if(abs_grad_ymf<ref)    py_m=0.0; 
+   else py_m=(p_ymf*grad_ymf/abs_grad_ymf);
+   
+   // 9 point Laplacian terms:
+   if (abs_grad_xpf_ypf<ref) p_cross_xpf_ypf=0.0;
+   else p_cross_xpf_ypf=(p_xpf_ypf*grad_xy_xpf_ypf/abs_grad_xpf_ypf);
+   if (abs_grad_xpf_ymf<ref) p_cross_xpf_ymf=0.0;
+   else p_cross_xpf_ymf=(p_xpf_ymf*grad_xy_xpf_ymf/abs_grad_xpf_ymf);
+   if (abs_grad_xmf_ypf<ref) p_cross_xmf_ypf=0.0;
+   else p_cross_xmf_ypf=(p_xmf_ypf*grad_xy_xmf_ypf/abs_grad_xmf_ypf);
+   if (abs_grad_xmf_ymf<ref) p_cross_xmf_ymf=0.0;
+   else p_cross_xmf_ymf=(p_xmf_ymf*grad_xy_xmf_ymf/abs_grad_xmf_ymf);
+
+   part_x=(px_p-px_m)/DX;
+   part_y=(py_p-py_m)/DX;
+   
+   // 9 point Laplacian terms:
+   part_xy_plus= (p_cross_xpf_ypf-p_cross_xmf_ymf)/(sqrt(2.0)*DX);
+   part_xy_minus=(p_cross_xpf_ymf-p_cross_xmf_ypf)/(sqrt(2.0)*DX);
+
+   divgrad=(2.0*(part_x+part_y)+1.0*(part_xy_plus+part_xy_minus))/3.0;
+
+// deterministic term of the EOM:
+   oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
+  break;  
+
+
+/*****************************************************************************************
+            MAGGRAD MODELL WITH PHI4 COEFFIECIONT FUNCTION 9 POINT LAPLACIAN
+*****************************************************************************************/
+
+  case 4:
+   // here come the 9 point Laplacian:
+
+   
+   grad_xy_xpf_ypf_paralell=ANGDIFF(ori_xp,ori_yp)/(2.0*DX);
+   grad_xy_xpf_ymf_paralell=ANGDIFF(ori_xp,ori_ym)/(2.0*DX);
+   grad_xy_xmf_ypf_paralell=ANGDIFF(ori_yp,ori_xm)/(2.0*DX);
+   grad_xy_xmf_ymf_paralell=ANGDIFF(ori_ym,ori_xm)/(2.0*DX);
+
+   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/16.0;
+   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/16.0;
+
+   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/16.0;
+   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/16.0;
+   
+   // 9 point Laplacian terms:
+   p_xpf_ypf=(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf);
+   p_xpf_ymf=(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf);
+   p_xmf_ypf=(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf);
+   p_xmf_ymf=(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf);
+
+
+   grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
+   grad_x_ymf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpym,ori_ym)+ANGDIFF(ori_ym,ori_xmym))/4.0;
+   grad_y_xpf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xpyp,ori_xp)+ANGDIFF(ori_xp,ori_xpym))/4.0;
+   grad_y_xmf=(ANGDIFF(ori_yp,ori)+ANGDIFF(ori,ori_ym)+ANGDIFF(ori_xmyp,ori_xm)+ANGDIFF(ori_xm,ori_xmym))/4.0;
+
+   abs_grad_xpf=sqrt(grad_xpf*grad_xpf+grad_y_xpf*grad_y_xpf);
+   abs_grad_xmf=sqrt(grad_xmf*grad_xmf+grad_y_xmf*grad_y_xmf);
+
+   abs_grad_ypf=sqrt(grad_x_ypf*grad_x_ypf+grad_ypf*grad_ypf);
+   abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
+
+   // 9 point Laplacian terms:
+   abs_grad_xpf_ypf=sqrt(grad_xy_xpf_ypf*grad_xy_xpf_ypf+grad_xy_xpf_ypf_paralell*grad_xy_xpf_ypf_paralell);
+   abs_grad_xpf_ymf=sqrt(grad_xy_xpf_ymf*grad_xy_xpf_ymf+grad_xy_xpf_ymf_paralell*grad_xy_xpf_ymf_paralell);
+   abs_grad_xmf_ypf=sqrt(grad_xy_xmf_ypf*grad_xy_xmf_ypf+grad_xy_xmf_ypf_paralell*grad_xy_xmf_ypf_paralell);
+   abs_grad_xmf_ymf=sqrt(grad_xy_xmf_ymf*grad_xy_xmf_ymf+grad_xy_xmf_ymf_paralell*grad_xy_xmf_ymf_paralell);
+
+   ref=1.0e-9;
+
+   // 9 point Laplacian terms:
+   
+
+   if(abs_grad_xpf<ref)    px_p=0.0; 
+   else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
+   if(abs_grad_xmf<ref)    px_m=0.0; 
+   else px_m=(p_xmf*grad_xmf/abs_grad_xmf);
+   if(abs_grad_ypf<ref)    py_p=0.0; 
+   else py_p=(p_ypf*grad_ypf/abs_grad_ypf);
+   if(abs_grad_ymf<ref)    py_m=0.0; 
+   else py_m=(p_ymf*grad_ymf/abs_grad_ymf);
+   
+   // 9 point Laplacian terms:
+   if (abs_grad_xpf_ypf<ref) p_cross_xpf_ypf=0.0;
+   else p_cross_xpf_ypf=(p_xpf_ypf*grad_xy_xpf_ypf/abs_grad_xpf_ypf);
+   if (abs_grad_xpf_ymf<ref) p_cross_xpf_ymf=0.0;
+   else p_cross_xpf_ymf=(p_xpf_ymf*grad_xy_xpf_ymf/abs_grad_xpf_ymf);
+   if (abs_grad_xmf_ypf<ref) p_cross_xmf_ypf=0.0;
+   else p_cross_xmf_ypf=(p_xmf_ypf*grad_xy_xmf_ypf/abs_grad_xmf_ypf);
+   if (abs_grad_xmf_ymf<ref) p_cross_xmf_ymf=0.0;
+   else p_cross_xmf_ymf=(p_xmf_ymf*grad_xy_xmf_ymf/abs_grad_xmf_ymf);
+
+   part_x=(px_p-px_m)/DX;
+   part_y=(py_p-py_m)/DX;
+   
+   // 9 point Laplacian terms:
+   part_xy_plus= (p_cross_xpf_ypf-p_cross_xmf_ymf)/(sqrt(2.0)*DX);
+   part_xy_minus=(p_cross_xpf_ymf-p_cross_xmf_ypf)/(sqrt(2.0)*DX);
+
+   divgrad=(2.0*(part_x+part_y)+1.0*(part_xy_plus+part_xy_minus))/3.0;
+
+// deterministic term of the EOM:
+   oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
+  break;  
+
+
+/*****************************************************************************************
+                                MAGGRAD MODELL: SIDEBRANCHING
+*****************************************************************************************/
+
+  case 5:
    p_xpf=P_PHI_XPF(phi,phi_xp);
    p_xmf=P_PHI_XMF(phi,phi_xm);
 
@@ -1070,7 +1296,86 @@ __kernel void orientation_field_update(__global double* PHI,
 
   break;
 
-  case 4:
+/*****************************************************************************************
+                                PLAPP MODEL 4 PONT LAPLACIAN
+*****************************************************************************************/
+
+  case 6:
+  // this is the gradtheta2 model:
+
+
+   phi_xpf=(phi_xp+phi)/2.0;
+   phi_xmf=(phi_xm+phi)/2.0;
+   phi_ypf=(phi_yp+phi)/2.0;
+   phi_ymf=(phi_ym+phi)/2.0;
+
+   qfi_xpf=Q_PHI(phi_xpf);
+   qfi_xmf=Q_PHI(phi_xmf);
+   qfi_ypf=Q_PHI(phi_ypf);
+   qfi_ymf=Q_PHI(phi_ymf);
+   
+   //since at model 1 we do not need the gradient, just the ANGDIFF, in this case we have to divide by DX:
+   grad_xpf=grad_xpf/DX;
+   grad_xmf=grad_xmf/DX;
+   grad_ypf=grad_ypf/DX;
+   grad_ymf=grad_ymf/DX;
+
+
+   part_x=(qfi_xpf*grad_xpf-qfi_xmf*grad_xmf)/(DX);
+   part_y=(qfi_ypf*grad_ypf-qfi_ymf*grad_ymf)/(DX);
+
+   mobility=(DLESS_M_THETA_S_PLAPP+(1.0-P_PHI(phi))*(DLESS_M_THETA_L_PLAPP-DLESS_M_THETA_S_PLAPP))*(1.0-phi)*(1.0-phi)*(1.0-phi);
+   oridot=mobility*(part_x+part_y);
+ 
+  break;
+
+/*****************************************************************************************
+                                PLAPP MODEL 9 PONT LAPLACIAN
+*****************************************************************************************/
+
+  case 7:
+  // this is the gradtheta2 model:
+
+
+   phi_xpf=(phi_xp+phi)/2.0;
+   phi_xmf=(phi_xm+phi)/2.0;
+   phi_ypf=(phi_yp+phi)/2.0;
+   phi_ymf=(phi_ym+phi)/2.0;
+
+   qfi_xpf=Q_PHI(phi_xpf);
+   qfi_xmf=Q_PHI(phi_xmf);
+   qfi_ypf=Q_PHI(phi_ypf);
+   qfi_ymf=Q_PHI(phi_ymf);
+   
+   //since at model 1 we do not need the gradient, just the ANGDIFF, in this case we have to divide by DX:
+   grad_xpf=grad_xpf/DX;
+   grad_xmf=grad_xmf/DX;
+   grad_ypf=grad_ypf/DX;
+   grad_ymf=grad_ymf/DX;
+
+   qfi_xpf_ypf=Q_PHI(phi_xpf_ypf);
+   qfi_xpf_ymf=Q_PHI(phi_xpf_ymf);
+   qfi_xmf_ypf=Q_PHI(phi_xmf_ypf);
+   qfi_xmf_ymf=Q_PHI(phi_xmf_ymf);
+
+   part_x=(qfi_xpf*grad_xpf-qfi_xmf*grad_xmf)/(DX);
+   part_y=(qfi_ypf*grad_ypf-qfi_ymf*grad_ymf)/(DX);
+
+   part_xy_plus= (qfi_xpf_ypf*grad_xy_xpf_ypf-qfi_xmf_ymf*grad_xy_xmf_ymf)/DX;
+   part_xy_minus=(qfi_xpf_ymf*grad_xy_xpf_ymf-qfi_xmf_ypf*grad_xy_xmf_ypf)/DX;
+
+   mobility=(DLESS_M_THETA_S_PLAPP+(1.0-P_PHI(phi))*(DLESS_M_THETA_L_PLAPP-DLESS_M_THETA_S_PLAPP))*(1.0-phi)*(1.0-phi)*(1.0-phi);
+   oridot=mobility*(2.0*(part_x+part_y)+(part_xy_plus+part_xy_minus))/3.0;
+   //oridot=mobility*(part_x+part_y);
+
+  break;
+  
+  
+/*****************************************************************************************
+            MAGGRAD MODELL WITH PHI4 COEFFIECIONT FUNCTION 9 POINT LAPLACIAN
+*****************************************************************************************/
+
+  case 8:
    // here come the 9 point Laplacian:
 
    
@@ -1079,17 +1384,18 @@ __kernel void orientation_field_update(__global double* PHI,
    grad_xy_xmf_ypf_paralell=ANGDIFF(ori_yp,ori_xm)/(2.0*DX);
    grad_xy_xmf_ymf_paralell=ANGDIFF(ori_ym,ori_xm)/(2.0*DX);
 
-   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/8.0;
-   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/8.0;
+   p_xpf=(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)*(phi+phi_xp)/16.0;
+   p_xmf=(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)*(phi+phi_xm)/16.0;
 
-   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/8.0;
-   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/8.0;
+   p_ypf=(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)*(phi+phi_yp)/16.0;
+   p_ymf=(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)*(phi+phi_ym)/16.0;
    
    // 9 point Laplacian terms:
-   double p_xpf_ypf=(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf);
-   double p_xpf_ymf=(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf);
-   double p_xmf_ypf=(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf);
-   double p_xmf_ymf=(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf);
+   p_xpf_ypf=(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf)*(phi_xpf_ypf);
+   p_xpf_ymf=(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf)*(phi_xpf_ymf);
+   p_xmf_ypf=(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf)*(phi_xmf_ypf);
+   p_xmf_ymf=(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf)*(phi_xmf_ymf);
+
 
 
    grad_x_ypf=(ANGDIFF(ori_xp,ori)+ANGDIFF(ori,ori_xm)+ANGDIFF(ori_xpyp,ori_yp)+ANGDIFF(ori_yp,ori_xmyp))/4.0;
@@ -1104,15 +1410,15 @@ __kernel void orientation_field_update(__global double* PHI,
    abs_grad_ymf=sqrt(grad_x_ymf*grad_x_ymf+grad_ymf*grad_ymf);
 
    // 9 point Laplacian terms:
-   double abs_grad_xpf_ypf=sqrt(grad_xy_xpf_ypf*grad_xy_xpf_ypf+grad_xy_xpf_ypf_paralell*grad_xy_xpf_ypf_paralell);
-   double abs_grad_xpf_ymf=sqrt(grad_xy_xpf_ymf*grad_xy_xpf_ymf+grad_xy_xpf_ymf_paralell*grad_xy_xpf_ymf_paralell);
-   double abs_grad_xmf_ypf=sqrt(grad_xy_xmf_ypf*grad_xy_xmf_ypf+grad_xy_xmf_ypf_paralell*grad_xy_xmf_ypf_paralell);
-   double abs_grad_xmf_ymf=sqrt(grad_xy_xmf_ymf*grad_xy_xmf_ymf+grad_xy_xmf_ymf_paralell*grad_xy_xmf_ymf_paralell);
+   abs_grad_xpf_ypf=sqrt(grad_xy_xpf_ypf*grad_xy_xpf_ypf+grad_xy_xpf_ypf_paralell*grad_xy_xpf_ypf_paralell);
+   abs_grad_xpf_ymf=sqrt(grad_xy_xpf_ymf*grad_xy_xpf_ymf+grad_xy_xpf_ymf_paralell*grad_xy_xpf_ymf_paralell);
+   abs_grad_xmf_ypf=sqrt(grad_xy_xmf_ypf*grad_xy_xmf_ypf+grad_xy_xmf_ypf_paralell*grad_xy_xmf_ypf_paralell);
+   abs_grad_xmf_ymf=sqrt(grad_xy_xmf_ymf*grad_xy_xmf_ymf+grad_xy_xmf_ymf_paralell*grad_xy_xmf_ymf_paralell);
 
-   double ref=1.0e-9;
+   ref=1.0e-9;
 
    // 9 point Laplacian terms:
-   double p_cross_xpf_ypf,p_cross_xpf_ymf,p_cross_xmf_ypf,p_cross_xmf_ymf;
+   
 
    if(abs_grad_xpf<ref)    px_p=0.0; 
    else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
@@ -1132,19 +1438,26 @@ __kernel void orientation_field_update(__global double* PHI,
    else p_cross_xmf_ypf=(p_xmf_ypf*grad_xy_xmf_ypf/abs_grad_xmf_ypf);
    if (abs_grad_xmf_ymf<ref) p_cross_xmf_ymf=0.0;
    else p_cross_xmf_ymf=(p_xmf_ymf*grad_xy_xmf_ymf/abs_grad_xmf_ymf);
+   
+   grad_xpf=grad_xpf/DX;
+   grad_xmf=grad_xmf/DX;
+   grad_ypf=grad_ypf/DX;
+   grad_ymf=grad_ymf/DX;
 
-   part_x=(px_p-px_m)/DX;
-   part_y=(py_p-py_m)/DX;
+   part_x=(px_p-px_m+DLESS_HT_PLAPP/DLESS_HT*(p_xpf*grad_xpf-p_xmf*grad_xmf))/DX;
+   part_y=(py_p-py_m+DLESS_HT_PLAPP/DLESS_HT*(p_ypf*grad_ypf-p_ymf*grad_ymf))/DX;
    
    // 9 point Laplacian terms:
-   part_xy_plus= (p_cross_xpf_ypf-p_cross_xmf_ymf)/(sqrt(2.0)*DX);
-   part_xy_minus=(p_cross_xpf_ymf-p_cross_xmf_ypf)/(sqrt(2.0)*DX);
+   part_xy_plus= (p_cross_xpf_ypf-p_cross_xmf_ymf+DLESS_HT_PLAPP/DLESS_HT*(p_xpf_ypf*grad_xy_xpf_ypf-p_xmf_ymf*grad_xy_xmf_ymf))/(sqrt(2.0)*DX);
+   part_xy_minus=(p_cross_xpf_ymf-p_cross_xmf_ypf+DLESS_HT_PLAPP/DLESS_HT*(p_xpf_ymf*grad_xy_xpf_ymf-p_xmf_ypf*grad_xy_xmf_ypf))/(sqrt(2.0)*DX);
 
    divgrad=(2.0*(part_x+part_y)+1.0*(part_xy_plus+part_xy_minus))/3.0;
 
 // deterministic term of the EOM:
    oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
   break;  
+
+
 }
 // noise term in the EOM:
  double noise;

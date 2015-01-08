@@ -316,41 +316,41 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   #------------------------------------------------------
   #                CONCENTRATION FIELD:
   #------------------------------------------------------
-
-  cl.enqueue_read_buffer(queue,C_buffer, Field).wait()
-  if figure==0 or figure==2:
-    file_cf=str(file0_cf)
-    if final==0:
-      file_cf=file_cf+str(step)+".npy"
-    elif final==1:
-      file_cf=file_cf+".npy"
-
-    if EXPORT_FORMAT==1:
+  if ONE_OR_TWO_COMP==2:
+    cl.enqueue_read_buffer(queue,C_buffer, Field).wait()
+    if figure==0 or figure==2:
+      file_cf=str(file0_cf)
       if final==0:
-        np.save(file_cf,Field)
+        file_cf=file_cf+str(step)+".npy"
       elif final==1:
-        np.save(file_cf,Field)
+        file_cf=file_cf+".npy"
 
-    if EXPORT_FORMAT==2:
-      if final==0:
-        np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)).astype(float16))
-      elif final==1:
-        np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)))
+        if EXPORT_FORMAT==1:
+          if final==0:
+            np.save(file_cf,Field)
+          elif final==1:
+            np.save(file_cf,Field)
+
+        if EXPORT_FORMAT==2:
+          if final==0:
+            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)).astype(float16))
+          elif final==1:
+            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)))
 
   #----------------------FIGURE--------------------------
-  if figure==1 or figure==2:
-    conc_data=Field.reshape((XSIZE,YSIZE))
-    s=(XSIZE,YSIZE,3)
-    conc_rgb=np.empty(LINSIZE*3).astype(np.float16)
-    conc_rgb=conc_rgb.reshape(s)
+    if figure==1 or figure==2:
+      conc_data=Field.reshape((XSIZE,YSIZE))
+      s=(XSIZE,YSIZE,3)
+      conc_rgb=np.empty(LINSIZE*3).astype(np.float16)
+      conc_rgb=conc_rgb.reshape(s)
 
-    c_red=(conc_data-C_S)/(C_L-C_S)
-    c_red[c_red>1]=1
-    c_red[c_red<0]=0
+      c_red=(conc_data-C_S)/(C_L-C_S)
+      c_red[c_red>1]=1
+      c_red[c_red<0]=0
 
-    conc_rgb[:,:,0]=c_red
-    conc_rgb[:,:,1]=c_red
-    conc_rgb[:,:,2]=1.0-c_red
+      conc_rgb[:,:,0]=c_red
+      conc_rgb[:,:,1]=c_red
+      conc_rgb[:,:,2]=1.0-c_red
 
     # fig=plt.figure(figsize=(5,5))
     # fig_plot = fig.add_subplot(1,1,1)
@@ -360,13 +360,13 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     # fig.clf()
     # plt.close(fig)
 
-    out_file="conc_"+str(step)+".tiff"
-    img=Image.fromarray((255*conc_rgb).astype(np.uint8))
-    img.save(out_file)
+      out_file="conc_"+str(step)+".tiff"
+      img=Image.fromarray((255*conc_rgb).astype(np.uint8))
+      img.save(out_file)
 
-    del conc_data
-    del conc_rgb
-    del c_red
+      del conc_data
+      del conc_rgb
+      del c_red
 
 def print_setup():
   if MODELL==1:
@@ -470,6 +470,7 @@ def main():
       program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
 
   if INITIAL_SHAPE==7:
+    random.seed(10)
     for i_ind in range(0,32,1):
       for j_ind in range(0,32,1):
         x0=np.float64(16+32*i_ind)
@@ -478,9 +479,18 @@ def main():
         start_orientation_1=np.float64(random.uniform(0,1))
         program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
 
-  if INITIAL_SHAPE==8:
-    program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, RandState_buffer)
 
+  if INITIAL_SHAPE==8:
+    program.insert_four_rectangles_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
+
+  if INITIAL_SHAPE==9:
+    epsilon=np.float64(EPSILON)
+    dx0=np.float64(DX0)
+    program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,RandState_buffer,epsilon,dx0)
+
+  if INITIAL_SHAPE==10:
+    epsilon=np.float64(EPSILON)
+    program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
 
   number_of_nucleus=0
   if number_of_nucleus>0:
@@ -520,21 +530,30 @@ def main():
 
 
    else:
-    args_phi=(PhiNew_buffer, CNew_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
-    args_c=(PhiNew_buffer,CNew_buffer,C_buffer, Jx_buffer, Jy_buffer)
+    if ONE_OR_TWO_COMP==1:
+      args_phi=(PhiNew_buffer, CNew_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
+      args_c=(PhiNew_buffer,CNew_buffer,C_buffer, Jx_buffer, Jy_buffer)
+    elif ONE_OR_TWO_COMP==2:
+      args_phi=(PhiNew_buffer, C_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
+      args_c=(PhiNew_buffer,C_buffer,C_buffer, Jx_buffer, Jy_buffer)
     args_ori=(PhiNew_buffer, OriNew_buffer, Ori_buffer,RandState_buffer)
     args_jx=(PhiNew_buffer,Jx_buffer,CNew_buffer)
     args_jy=(PhiNew_buffer,Jy_buffer,CNew_buffer)
 
    program.phase_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_phi)
-   program.J_X_CALC(queue,(LINSIZE,),(WG_SIZE,),*args_jx)
-   program.J_Y_CALC(queue,(LINSIZE,),(WG_SIZE,),*args_jy)
-   program.conc_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_c)
    program.orientation_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_ori)
+   if ONE_OR_TWO_COMP==2:
+     program.J_X_CALC(queue,(LINSIZE,),(WG_SIZE,),*args_jx)
+     program.J_Y_CALC(queue,(LINSIZE,),(WG_SIZE,),*args_jy)
+     program.conc_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_c)
+   
 
    active_buffer=1-active_buffer
 
-   if step%PRINT_STEPS==0:
+   if step<100000 and step%5000==0:
+    export_field(queue,'pf_','cf_','of_',figure=2,step=step)
+
+   elif step%PRINT_STEPS==0:
     export_field(queue,'pf_','cf_','of_',figure=2,step=step)
 
   # if step%2==1:

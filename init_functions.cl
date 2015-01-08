@@ -184,6 +184,37 @@ __kernel void insert_four_rectangles(__global double* Phi, __global double* C,
  
 }
 
+
+__kernel void insert_four_rectangles_cross(__global double* Phi, __global double* C,
+ __global double* Ori){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+
+ if (x<=y && y<=YSIZE-x) ori=0.1;
+ if (x<=y && y>YSIZE-x) ori=0.35;
+ if (x>y && y<=YSIZE-x) ori=0.65;
+ if (x>y && y>YSIZE-x) ori=0.9;
+ phi=0.95;
+ c=C_0;
+
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
+ 
+}
+
+
+
+
+
 __kernel void insert_two_rectangles(__global double* Phi, __global double* C,
  __global double* Ori){
  int n=get_global_id(0); 
@@ -260,7 +291,8 @@ __kernel void insert_rectangle(__global double* Phi, __global double* C,
  
 }
 
-__kernel void insert_orientation_defect_conf(__global double* Phi, __global double* C,  __global double* Ori, __global mwc64x_state_t* RandState){
+__kernel void insert_orientation_defect_conf(__global double* Phi, __global double* C,  __global double* Ori, __global mwc64x_state_t* RandState,
+ const double epsilon,const double dx0){
  int n=get_global_id(0); 
  int x,y;
  double phi=0.0;
@@ -272,39 +304,100 @@ __kernel void insert_orientation_defect_conf(__global double* Phi, __global doub
 
  y = n/YSTEP;
  x = (n%YSTEP)/XSTEP;
+
+ double theta2=0.25+epsilon/2.0;
+ double theta1=0.75-epsilon/2.0;
+ double theta3=0.5;
  
 
-if (x<XSIZE*0.5)
+if (x<XSIZE*0.45)
 {
-	Phi[n]=(1.0+tanh((0.4*XSIZE-x)*0.0625))*0.5;
-	Ori[n]=0.4*Phi[n]+(1.0-Phi[n])*random_uniform(&rng);
+	Phi[n]=(1.0+tanh((0.4*XSIZE-x)*5.0))*0.5;
+	Ori[n]=theta1+(1.0-(1.0+tanh((0.4*XSIZE+5-x)*5.0))*0.5)*random_uniform(&rng);
 }
 
-if (x>XSIZE*0.5)
+if (x>XSIZE*0.55)
 {
-	Phi[n]=(1.0+tanh((x-0.6*XSIZE)*0.0625))*0.5;
-	Ori[n]=0.8*Phi[n]+(1.0-Phi[n])*random_uniform(&rng);
+	Phi[n]=(1.0+tanh((x-0.6*XSIZE)*5.0))*0.5;
+	Ori[n]=theta2+(1.0-(1.0+tanh((x-0.6*XSIZE+dx0)*5.0))*0.5)*random_uniform(&rng);
 }
 
+
+if (XSIZE*0.45<x && x<XSIZE*0.55)
+{
+ Phi[n]=0;
+ Ori[n]=random_uniform(&rng);
+}
 
  
  double rx2=(x-XSIZE*0.5)*(x-XSIZE*0.5);
  double ry2=(y-YSIZE*0.5)*(y-YSIZE*0.5);
 
  double r=sqrt(rx2+ry2);
-
-double r_0=50.0;
+ double ori_ref;
+ double r_0=50.0;
 
  if (r<r_0){
-  phi=(1.0-tanh((r-r_0/2.0)*0.5))/2.0;
-  double ori_ref=(1.0-tanh((r-(3+r_0/2.0))*0.5))/2.0;
+  phi    =(1.0-tanh((r-r_0/2.0)*0.5))/2.0;
+  ori_ref=(1.0-tanh((r-(5+r_0/2.0))*0.5))/2.0;
   c=C_0;
-  ori=0.1+(1.0-ori_ref)*ori_rand_term;
+  ori=theta3+(1.0-ori_ref)*ori_rand_term;
   
  Phi[n]=phi;
  C[n]=c;
  double mod1=fmod(ori,1.0);
  Ori[n]=fmod(mod1+1.0,1.0);;
+ }
+ 
+}
+
+
+
+__kernel void insert_orientation_defect_conf_stepfun(__global double* Phi, __global double* C,  __global double* Ori, const double epsilon){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+ double theta2=0.25+epsilon/2.0;
+ double theta1=0.75-epsilon/2.0;
+ double theta3=0.5;
+ 
+
+if (x<XSIZE*0.5)
+{
+  Phi[n]=0.9;
+  Ori[n]=theta1;
+}
+
+if (x>=XSIZE*0.5)
+{
+  Phi[n]=0.9;
+  Ori[n]=theta2;
+}
+
+
+
+ double rx2=(x-XSIZE*0.5)*(x-XSIZE*0.5);
+ double ry2=(y-YSIZE*0.5)*(y-YSIZE*0.5);
+
+ double r=sqrt(rx2+ry2);
+ double ori_ref;
+ double r_0=50.0;
+
+ if (r<r_0){
+  phi    =0.9;
+  c=C_0;
+  ori=theta3;
+  
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
  }
  
 }
