@@ -401,3 +401,52 @@ if (x>=XSIZE*0.5)
  }
  
 }
+
+__kernel void insert_orientation_defect_conf_stepfun_cross(__global double* Phi, __global double* C,  __global double* Ori, const double epsilon){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+ double theta2=0.25+epsilon/2.0;
+ double theta1=0.75-epsilon/2.0;
+ double theta3=0.5;
+ 
+
+if (x<y)
+{
+  Phi[n]=1.0;
+  Ori[n]=theta1;
+}
+
+if (x>=y)
+{
+  Phi[n]=1.0;
+  Ori[n]=theta2;
+}
+
+
+
+ double rx2=(x-XSIZE*0.5)*(x-XSIZE*0.5);
+ double ry2=(y-YSIZE*0.5)*(y-YSIZE*0.5);
+
+ double r=sqrt(rx2+ry2);
+ double ori_ref;
+ double r_0=50.0;
+
+ if (r<r_0){
+  phi    =1.0;
+  c=C_0;
+  ori=theta3;
+  
+ Phi[n]=phi;
+ C[n]=c;
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
+ }
+ 
+}

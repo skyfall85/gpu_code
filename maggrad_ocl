@@ -492,6 +492,10 @@ def main():
     epsilon=np.float64(EPSILON)
     program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
 
+  if INITIAL_SHAPE==11:
+    epsilon=np.float64(EPSILON)
+    program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
+
   number_of_nucleus=0
   if number_of_nucleus>0:
    # initialise the nucleus:

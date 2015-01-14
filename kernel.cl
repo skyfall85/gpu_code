@@ -618,6 +618,9 @@ __kernel void phase_field_update(__global double* Phi,
   #endif
   #endif
 
+ int y = n/YSTEP;
+ int x = (n%YSTEP)/XSTEP;
+
  double phi=Phi[n];
  double phi_xp=Phi[XP];
  double phi_xm=Phi[XM];
@@ -716,6 +719,10 @@ __kernel void phase_field_update(__global double* Phi,
 
 //multiply the right hand side with the mobility
  phidot*=mphi; // Noise sample
+ // if (CROSS==1)
+ // {
+ //  if (x<2 || x>=(XSIZE-3) || y<2 || y>=(YSIZE-3)) phidot*=0.0;
+ // }
 
  double noise;
  mwc64x_state_t rng = RandState[n];
@@ -864,6 +871,8 @@ __kernel void orientation_field_update(__global double* PHI,
   int YP = ( MYDIV(n, LINSIZE) == MYDIV(n+YSTEP, LINSIZE) ? n+YSTEP : n );
   int YM = ( MYDIV(n, LINSIZE) == MYDIV(n-YSTEP, LINSIZE) ? n-YSTEP : n );
  #endif
+ int y = n/YSTEP;
+ int x = (n%YSTEP)/XSTEP;
 
  double ori=Ori[n];
  double ori_xp=Ori[XP];
@@ -1473,7 +1482,12 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
  double mod1=fmod(Ori[n]+oridot*DT+noise,one);
  //double mod1=fmod(Ori[n]+oridot*DT,1.0);
  double new_value=fmod(mod1+one,one);
- Ori_new[n]=new_value;
+ if (CROSS==1)
+ {
+  if (x>1 && x<(XSIZE-2) && y>1 && y<(YSIZE-2)) Ori_new[n]=new_value;
+  else Ori_new[n]=Ori[n];
+ }
+ if (CROSS==0)  Ori_new[n]=new_value;
 }
 
 /********************************************
