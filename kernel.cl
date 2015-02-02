@@ -1426,9 +1426,6 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
 
    ref=1.0e-9;
 
-   // 9 point Laplacian terms:
-   
-
    if(abs_grad_xpf<ref)    px_p=0.0; 
    else px_p=(p_xpf*grad_xpf/abs_grad_xpf);
    if(abs_grad_xmf<ref)    px_m=0.0; 
@@ -1453,14 +1450,15 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
    grad_ypf=grad_ypf/DX;
    grad_ymf=grad_ymf/DX;
 
-   part_x=(px_p-px_m+DLESS_HT_PLAPP/DLESS_HT*(p_xpf*grad_xpf-p_xmf*grad_xmf))/DX;
-   part_y=(py_p-py_m+DLESS_HT_PLAPP/DLESS_HT*(p_ypf*grad_ypf-p_ymf*grad_ymf))/DX;
+
+   part_x=(px_p-px_m+2.0*DLESS_HT_PLAPP/DLESS_HT*(p_xpf*grad_xpf-p_xmf*grad_xmf))/DX;
+   part_y=(py_p-py_m+2.0*DLESS_HT_PLAPP/DLESS_HT*(p_ypf*grad_ypf-p_ymf*grad_ymf))/DX;
    
    // 9 point Laplacian terms:
    part_xy_plus= (p_cross_xpf_ypf-p_cross_xmf_ymf+2.0*sqrt(2.0)*DLESS_HT_PLAPP/DLESS_HT*(p_xpf_ypf*grad_xy_xpf_ypf-p_xmf_ymf*grad_xy_xmf_ymf))/(sqrt(2.0)*DX);
    part_xy_minus=(p_cross_xpf_ymf-p_cross_xmf_ypf+2.0*sqrt(2.0)*DLESS_HT_PLAPP/DLESS_HT*(p_xpf_ymf*grad_xy_xpf_ymf-p_xmf_ypf*grad_xy_xmf_ypf))/(sqrt(2.0)*DX);
 
-   divgrad=(2.0*(part_x+part_y)+1.0*(part_xy_plus+part_xy_minus))/3.0;
+   divgrad=((1.0-CROSS_WEIGHT)*(part_x+part_y)+CROSS_WEIGHT*(part_xy_plus+part_xy_minus));
 
 // deterministic term of the EOM:
    oridot=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))*divgrad;
@@ -1475,8 +1473,7 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
  double pphi=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))/DLESS_M_THETA_L;
  double pf=(1.0-phi);
  double pf10=pf*pf*pf*pf*pf*pf*pf*pf*pf*pf;
- noise = ORIENTATION_NOISE_AMPLITUDE*random_normal(&rng)*pphi*pf10*sqrt(ADT);
- //noise = random_normal(n, &seed, ORIENTATION_NOISE_AMPLITUDE)*pphi*pf10*sqrt(ADT); //sqrt(ADT)*
+ noise = ORIENTATION_NOISE_AMPLITUDE*random_normal(&rng)*pphi*sqrt(ADT);
  RandState[n] = rng;
  double one=1.0;
  double mod1=fmod(Ori[n]+oridot*DT+noise,one);

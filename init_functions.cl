@@ -450,3 +450,42 @@ if (x>=y)
  }
  
 }
+
+
+
+__kernel void insert_N_grains_fullfilling_lattice(__global double* Phi, __global double* C,  __global double* Ori, const double N, const double epsilon){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP)/XSTEP;
+
+ double dx=x-0.5*XSIZE;
+ double dy=y-0.5*YSIZE;
+ double alpha=atan2(dy,dx)*180.0/PI;
+ if (alpha<0) alpha=360.0+alpha;
+ double inner_angle=360.0/N;
+ double grain_id=floor(alpha/inner_angle)+1;
+ double parity=fmod(grain_id,2.0);
+ parity=(parity-0.5)*2.0;
+ double ori=0.5+parity*(0.25+epsilon*0.5);
+ double mod1=fmod(ori,1.0);
+ Ori[n]=fmod(mod1+1.0,1.0);
+ 
+ Phi[n]=1.0;
+ C[n]=0.0;
+ 
+ double rx2=(x-XSIZE*0.5)*(x-XSIZE*0.5);
+ double ry2=(y-YSIZE*0.5)*(y-YSIZE*0.5);
+
+ double r=sqrt(rx2+ry2);
+ double r_0=50.0;
+ if (r<r_0)
+ {
+    Ori[n]=0.5;
+ }
+ 
+ 
+}

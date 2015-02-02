@@ -456,7 +456,7 @@ def main():
   	program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
   if INITIAL_SHAPE==6:
-    num_of_nn=3
+    num_of_nn=NUM_OF_NEIGHBOUR
     x0=np.float64(0.5*XSIZE)
     y0=np.float64(0.5*YSIZE)
     radius=np.float64(5.0)
@@ -495,6 +495,10 @@ def main():
   if INITIAL_SHAPE==11:
     epsilon=np.float64(EPSILON)
     program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
+
+  if INITIAL_SHAPE==12:
+    epsilon=np.float64(EPSILON)
+    program.insert_N_grains_fullfilling_lattice(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,np.float64(NUM_OF_NEIGHBOUR),epsilon)
 
   number_of_nucleus=0
   if number_of_nucleus>0:
