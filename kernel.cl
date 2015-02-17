@@ -845,7 +845,7 @@ double Q_PHI(double PHI){
 __kernel void orientation_field_update(__global double* PHI, 
                                        __global double* Ori, 
                                        __global double* Ori_new,
-                                       __global mwc64x_state_t* RandState){
+                                       __global float* noise.array){
  int n=get_global_id(0);
 
  #if BCTYPE_X==PERIODIC
@@ -1468,16 +1468,19 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
 }
 // noise term in the EOM:
  double noise;
- mwc64x_state_t rng = RandState[n];
+ 
+ // HERE COMES THE FILTERED NOISE:
+ int stride=(XSIZE//2+1)*2;
+ int n_dash=x+stride*y;
+
 
  double pphi=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))/DLESS_M_THETA_L;
  double pf=(1.0-phi);
  double pf10=pf*pf*pf*pf*pf*pf*pf*pf*pf*pf;
- noise = ORIENTATION_NOISE_AMPLITUDE*random_normal(&rng)*pphi*sqrt(ADT);
- RandState[n] = rng;
+ noise = ORIENTATION_NOISE_AMPLITUDE*random.array(n_dash)*pphi*sqrt(ADT);
  double one=1.0;
  double mod1=fmod(Ori[n]+oridot*DT+noise,one);
- //double mod1=fmod(Ori[n]+oridot*DT,1.0);
+
  double new_value=fmod(mod1+one,one);
  if (CROSS==1)
  {
@@ -1527,4 +1530,18 @@ __kernel void copy_fields(__global double* C, __global double* CN, __global doub
 
 
 
-<INIT_FUNCTIONS>
+/************************************************************
+                       FILTERED NOISE
+************************************************************/
+
+__kernel void filling_noise_array(__global mwc64x_state_t* RandState, __global float* noise.array)
+{
+  int n=get_global_id(0);
+  int y = n/YSTEP;
+  int x = (n%YSTEP)/XSTEP;
+  mwc64x_state_t rng = RandState[n];
+  int stride=(XSIZE//2+1)*2;
+  int n_dash=x+stride*y;
+  noise.array(n_dash)=random_normal(&rng);
+  RandState[n] = rng;
+}
