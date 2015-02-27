@@ -29,6 +29,7 @@ import matplotlib.image as mpimg
 #import pylab
 import time
 import struct
+sys.path.append('./')
 import py_interop
 
 from PIL import Image
@@ -184,8 +185,6 @@ def init_fields(context):
     RandState_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE, 2*4*LINSIZE)  # Two uint32 for every pixel.
     Jx_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
     Jy_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
-
-    noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, 1)
 
     if SHOW_GRAIN_BOUNDARY==1:
       Phi=np.empty(LINSIZE).astype(np.float64)
@@ -419,6 +418,8 @@ def main():
 
  # creating buffers for the fields:
   init_fields(context)
+
+  noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, 1)
   
  # Init seeds:
   program.init_MWC64X(queue, (LINSIZE,), (WG_SIZE,), RandState_buffer, np.uint32(NOISE_SEED))
@@ -538,7 +539,7 @@ def main():
     args_ori=(Phi_buffer, Ori_buffer, OriNew_buffer,noise.array)
     args_jx=(Phi_buffer,Jx_buffer,C_buffer)
     args_jy=(Phi_buffer,Jy_buffer,C_buffer)
-    args_random=(RandState_buffer,random.array)
+    args_random=(RandState_buffer,noise.array)
 
 
    else:

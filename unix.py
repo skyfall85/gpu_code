@@ -83,6 +83,7 @@ def create_folders_for_parameters(input_file, output_file):
             subp.call(["cp","maggrad_ocl",foldername])
             subp.call(["cp","kernel.cl",foldername])
             subp.call(["cp","init_functions.cl",foldername])
+            subp.call(["cp","py_interop.py",foldername])
 
       # run the simulation in the subfolder:
             wd=os.getcwd()
