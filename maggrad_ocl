@@ -1,11 +1,5 @@
 #!/usr/local/bin/python2.7
 
-# 2013-11-07: A kod mukodik, a parameterek jok, de egyelore csak az orientacios mezot tudja inicializalni
-#             idoleptetes meg abszolut nincs benne. Sem kiiratas.
-#            1: Most mar be tud rakni 1 db kort, de az idolepes meg nem megy.
-
-
-
 
 from __future__ import division
 import argparse
@@ -189,6 +183,16 @@ def init_fields(context):
     if SHOW_GRAIN_BOUNDARY==1:
       Phi=np.empty(LINSIZE).astype(np.float64)
 
+def angdiff(x,y):
+  #define ANGDIFF(A,B) (ABS(A-B)<ABS(1.0-ABS(A-B)) ? A-B : ( (A-B)>0.0 ? (A-B)-1.0 : (ABS(A-B)<0.5 ? B-A : 1.0+(A-B)) )  )
+  if abs(x-y)<abs(1.0-abs(x-y)):
+    return x-y
+  elif (x-y)>0.0:
+    return (x-y)-1.0
+  elif abs(x-y)<0.5:
+    return (y-x)
+  else:
+    return 1.0+(x-y)
 
 
 def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
@@ -310,10 +314,43 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     img=Image.fromarray((255*ori_rgb).astype(np.uint8))
     img.save(out_file)
     # free memory space of unused variables:
-    del ori_data
     del ori_rgb
     if SHOW_GRAIN_BOUNDARY==1:
      del phi_data
+
+  #------------------------------------------------------
+  #                  MAGGRAD THETA PLOT:
+  #------------------------------------------------------
+  maggrad_sizex=XSIZE-2
+  maggrad_sizey=YSIZE-2
+  s=(maggrad_sizex,maggrad_sizey)
+  maggrad_array=np.empty(maggrad_sizex*maggrad_sizey).astype(np.float16)
+  maggrad_array=maggrad_array.reshape(s)
+  for m_x in range(1,maggrad_sizex+1,1):
+    for m_y in range(1,maggrad_sizey+1,1):
+      maggrad_array[m_x-1,m_y-1]=(math.sqrt(np.exp2(0.5*(angdiff(ori_data[m_x+1,m_y],ori_data[m_x,m_y])
+                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x-1,m_y])))
+                                      +np.exp2(0.5*(angdiff(ori_data[m_x,m_y+1],ori_data[m_x,m_y])
+                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x,m_y-1])))))
+  maggrad_rgb=np.empty(3*maggrad_sizex*maggrad_sizey).astype(np.float16)
+  s=(maggrad_sizex,maggrad_sizey,3)
+  maggrad_rgb=maggrad_rgb.reshape(s)
+  maggrad_array_max=np.amax(maggrad_array)
+  max_reciprok=1.0/maggrad_array_max
+  print('maggrad_array_max: {}'.format(maggrad_array_max))
+  maggrad_array=np.array(maggrad_array)*max_reciprok
+  maggrad_rgb[:,:,0]=(maggrad_array)
+  maggrad_rgb[:,:,1]=(maggrad_array)
+  maggrad_rgb[:,:,2]=(maggrad_array)
+
+  maggrad_file="maggrad_"+str(step)+".tiff"
+  img=Image.fromarray((255*maggrad_rgb).astype(np.uint8))
+  img.save(maggrad_file)
+
+  del maggrad_rgb
+  del maggrad_array
+  del ori_data
+
 
   #------------------------------------------------------
   #                CONCENTRATION FIELD:
@@ -419,7 +456,7 @@ def main():
  # creating buffers for the fields:
   init_fields(context)
 
-  noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, 1)
+  noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, 0.5)
   
  # Init seeds:
   program.init_MWC64X(queue, (LINSIZE,), (WG_SIZE,), RandState_buffer, np.uint32(NOISE_SEED))
@@ -431,78 +468,6 @@ def main():
     program.initialize_phase_field(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer)
     program.initialize_concentration_field(queue,(LINSIZE,),(WG_SIZE,),C_buffer)
     
-  if INITIAL_SHAPE==0:
-    for i_ind in range(0,32,1):
-      for j_ind in range(0,32,1):
-        x0=np.float64(16+32*i_ind)
-        y0=np.float64(16+32*j_ind)
-        radius=np.float64(5.0)
-        start_orientation_1=np.float64(random.uniform(0,1))
-        program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if INITIAL_SHAPE==1:
-    program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
-  if INITIAL_SHAPE==2:
-    x0=np.float64(0.5*XSIZE)
-    y0=np.float64(0.5*YSIZE)
-    radius=np.float64(5.0)
-    start_orientation_1=np.float64(0.25)
-    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if INITIAL_SHAPE==3:
-    radius=np.float64(20.0)
-    program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
-
-  if INITIAL_SHAPE==4:
-  	program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
-
-  if INITIAL_SHAPE==5:
-  	program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
-
-  if INITIAL_SHAPE==6:
-    num_of_nn=NUM_OF_NEIGHBOUR
-    x0=np.float64(0.5*XSIZE)
-    y0=np.float64(0.5*YSIZE)
-    radius=np.float64(5.0)
-    dist_nn=50.0
-    start_orientation_1=np.float64(0.25)
-    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-    for ind_nn in range(0,num_of_nn):
-      x0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.cos(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
-      y0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.sin(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
-      start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
-      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
-
-  if INITIAL_SHAPE==7:
-    random.seed(10)
-    for i_ind in range(0,32,1):
-      for j_ind in range(0,32,1):
-        x0=np.float64(16+32*i_ind)
-        y0=np.float64(16+32*j_ind)
-        radius=np.float64(16.0)
-        start_orientation_1=np.float64(random.uniform(0,1))
-        program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
-
-
-  if INITIAL_SHAPE==8:
-    program.insert_four_rectangles_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
-
-  if INITIAL_SHAPE==9:
-    epsilon=np.float64(EPSILON)
-    dx0=np.float64(DX0)
-    program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,RandState_buffer,epsilon,dx0)
-
-  if INITIAL_SHAPE==10:
-    epsilon=np.float64(EPSILON)
-    program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
-
-  if INITIAL_SHAPE==11:
-    epsilon=np.float64(EPSILON)
-    program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
-
-  if INITIAL_SHAPE==12:
-    epsilon=np.float64(EPSILON)
-    program.insert_N_grains_fullfilling_lattice(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,np.float64(NUM_OF_NEIGHBOUR),epsilon)
 
   number_of_nucleus=0
   if number_of_nucleus>0:
@@ -512,13 +477,6 @@ def main():
    radius=np.float64(5.0)
    start_orientation_1=np.float64(0.7)
    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if number_of_nucleus==2:
-   x1=np.float64(384.0)
-   y1=np.float64(384.0)
-   radius=np.float64(30.0)
-   start_orientation_2=np.float64(0.7)
-   program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x1,y1,radius,start_orientation_2,RandState_buffer)
 
 
  # write out initial configuration:
@@ -571,13 +529,6 @@ def main():
 
    elif step%PRINT_STEPS==0:
     export_field(queue,'pf_','cf_','of_',figure=2,step=step)
-
-  # if step%2==1:
-  #  cl.enqueue_read_buffer(queue,OriNew_buffer, Ori).wait()
-  #  cl.enqueue_read_buffer(queue,PhiNew_buffer, Phi).wait()
-  #  cl.enqueue_read_buffer(queue,CNew_buffer, C).wait()
-  #  export_field('pf_','cf_','of_',Phi,Ori,C,step)
-  # Read the values of the orientation field:
 
   export_field(queue,'pf_final','cf_final','of_final',figure=1,step=step,final=1)
   print "Total time of the simulation= {}".format(time.time()-start_time)
