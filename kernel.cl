@@ -582,7 +582,7 @@ __kernel void phase_field_update(__global double* Phi,
      phidot=phidot+tmp;
      break;
 
-     case 6: // this is the modified Plapp-model: (Orientation EOM with 4 point Laplacian)
+     case 7: // this is the modified Plapp-model: (Orientation EOM with 4 point Laplacian)
      tmp=-D_Q_PHI(phi)*(DLESS_HT_PLAPP*ABSGRAD2_THETA( ori, ori_xp, ori_xm, ori_yp, ori_ym));
      //tmp=0.0;
      phidot=phidot+tmp;
@@ -1046,8 +1046,8 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
 __kernel void initialize_orientation_field(__global double* Ori, __global mwc64x_state_t* RandState){
   int n=get_global_id(0);
   mwc64x_state_t rng = RandState[n];
-  Ori[n]=random_uniform(&rng);
-  //Ori[n]=0.25;
+  //Ori[n]=random_uniform(&rng);
+  Ori[n]=0.25;
   RandState[n] = rng;
 }
 

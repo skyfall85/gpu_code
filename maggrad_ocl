@@ -336,12 +336,13 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   s=(maggrad_sizex,maggrad_sizey,3)
   maggrad_rgb=maggrad_rgb.reshape(s)
   maggrad_array_max=np.amax(maggrad_array)
-  max_reciprok=1.0/maggrad_array_max
+  maggrad_array_min=np.amin(maggrad_array)
+  max_reciprok=1.0/(maggrad_array_max-maggrad_array_min)
   print('maggrad_array_max: {}'.format(maggrad_array_max))
-  maggrad_array=np.array(maggrad_array)*max_reciprok
-  maggrad_rgb[:,:,0]=(maggrad_array)
-  maggrad_rgb[:,:,1]=(maggrad_array)
-  maggrad_rgb[:,:,2]=(maggrad_array)
+  maggrad_array=(np.array(maggrad_array)-maggrad_array_min)*max_reciprok
+  maggrad_rgb[:,:,0]=(1.0-maggrad_array)
+  maggrad_rgb[:,:,1]=(1.0-maggrad_array)
+  maggrad_rgb[:,:,2]=(1.0-maggrad_array)
 
   maggrad_file="maggrad_"+str(step)+".tiff"
   img=Image.fromarray((255*maggrad_rgb).astype(np.uint8))
@@ -456,7 +457,7 @@ def main():
  # creating buffers for the fields:
   init_fields(context)
 
-  noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, 0.5)
+  noise = py_interop.FilteredNoise(context, queue, YSIZE, XSIZE, SIGMA_NOISE)
   
  # Init seeds:
   program.init_MWC64X(queue, (LINSIZE,), (WG_SIZE,), RandState_buffer, np.uint32(NOISE_SEED))
