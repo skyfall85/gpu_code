@@ -7,6 +7,12 @@
 
 <MACROS>
 
+/********************************************
+*********************************************
+          RANDOM NUMBER FUNCTIONS 
+*********************************************
+*********************************************/
+
 // MWC64X by David B. Thomas
 ulong MWC_AddMod64(ulong a, ulong b, ulong M) {
   ulong v=a+b;
@@ -110,6 +116,12 @@ tFloat random_uniform(mwc64x_state_t* s){
   MWC64X_Step(s);
   return (float)res/(float)UINT_MAX;
 }
+
+/********************************************
+*********************************************
+      RANDOM NUMBER FUNCTIONS ENDS
+*********************************************
+*********************************************/
 
 
 
@@ -300,7 +312,8 @@ double DF(double CONC ){
     break;
     case 2:
      retval=DLESS_DH_F_CU_PF*CONC*(1.0-T_0/T_M_CU)+DLESS_DH_F_NI_PF*(1.0-CONC)*(1.0-T_0/T_M_NI);
-}
+    break;
+    }
   return retval;
 }
 
@@ -325,6 +338,7 @@ double ABSGRAD_THETA(double ORI,double ORI_XP,double ORI_XM,double ORI_YP,double
  return sqrt(GRAD_X*GRAD_X+GRAD_Y*GRAD_Y);
 }
 
+//  F_ori for sidebranching
 double F_ORI(double ORI,double ORI_XP,double ORI_XM,double ORI_YP,double ORI_YM){
 
  double GRAD_XPF, GRAD_XMF, GRAD_YPF, GRAD_YMF;
@@ -389,7 +403,7 @@ double ABSGRAD_THETA_VECTOR(double P, double P_XP, double P_XM, double P_YP, dou
 
 
 /**--------------------------------------------------------*/
-
+// The coefficient of the grad(theta)^2 term in the Plapp model, Phi EOM
 double D_Q_PHI(double PHI){
 
  double a=(1.0-PHI);
@@ -490,7 +504,6 @@ __kernel void phase_field_update(__global double* Phi,
     int XMYM = ( MYDIV(XM, LINSIZE) == MYDIV(XM-YSTEP, LINSIZE) ? XM-YSTEP : XM );
   #endif
 
-  #if DIMENSION==2
   #if BCTYPE_Y==PERIODIC
     int YP = ( MYDIV(n, LINSIZE) == MYDIV(n+YSTEP, LINSIZE) ? n+YSTEP : n+YSTEP-LINSIZE );
     int YM = ( MYDIV(n, LINSIZE) == MYDIV(n-YSTEP, LINSIZE) ? n-YSTEP : n-YSTEP+LINSIZE );
@@ -498,24 +511,7 @@ __kernel void phase_field_update(__global double* Phi,
     int YP = ( MYDIV(n, LINSIZE) == MYDIV(n+YSTEP, LINSIZE) ? n+YSTEP : n );
     int YM = ( MYDIV(n, LINSIZE) == MYDIV(n-YSTEP, LINSIZE) ? n-YSTEP : n );
   #endif
-  #endif
 
-  #if DIMENSION==3
-  #if BCTYPE_Y==PERIODIC
-    int YP = ( MYDIV(n,ZSTEP) == MYDIV(n+YSTEP,ZSTEP) ? n+YSTEP : n+YSTEP-ZSTEP );
-    int YM = ( MYDIV(n,ZSTEP) == MYDIV(n-YSTEP,ZSTEP) ? n-YSTEP : n-YSTEP+ZSTEP );
-  #elif BCTYPE_Y==NOFLUX
-    int YP = ( MYDIV(n,ZSTEP) == MYDIV(n+YSTEP,ZSTEP) ? n+YSTEP : n );
-    int YM = ( MYDIV(n,ZSTEP) == MYDIV(n-YSTEP,ZSTEP) ? n-YSTEP : n );
-  #endif
-  #if BCTYPE_Z==PERIODIC
-    int ZP = ( MYDIV(n, LINSIZE) == MYDIV(n+ZSTEP, LINSIZE) ? n+ZSTEP : n+ZSTEP-LINSIZE );
-    int ZM = ( MYDIV(n, LINSIZE) == MYDIV(n-ZSTEP, LINSIZE) ? n-ZSTEP : n-ZSTEP+LINSIZE );
-  #elif BCTYPE_Z==NOFLUX
-    int ZP = ( MYDIV(n, LINSIZE) == MYDIV(n+ZSTEP, LINSIZE) ? n+ZSTEP : n );
-    int ZM = ( MYDIV(n, LINSIZE) == MYDIV(n-ZSTEP, LINSIZE) ? n-ZSTEP : n );
-  #endif
-  #endif
 
  int y = n/YSTEP;
  int x = (n%YSTEP)/XSTEP;
@@ -599,12 +595,13 @@ __kernel void phase_field_update(__global double* Phi,
 
  // Normal noise
  noise = PHASE_NOISE_AMPLITUDE*random_normal(&rng)*(1.0-P_PHI(phi))*sqrt(ADT);
- //noise = random_normal(n, &seed, PHASE_NOISE_AMPLITUDE)*(1.0-P_PHI(phi))*sqrt(ADT);//*sqrt(ADT);
+
 
  // Save PRNG state
  RandState[n] = rng;
 
- if (phi+(phidot)*DT<-0.1 || phi+(phidot)*DT>1.0) PhiNew[n]=0.99;
+ if (phi+(phidot)*DT>1.0) PhiNew[n]=0.99;
+ else if (phi+(phidot)*DT<-0.1) PhiNew[n]=0.0;
  else PhiNew[n]=phi+(phidot)*DT+noise;
 
 }
@@ -744,16 +741,19 @@ __kernel void orientation_field_update(__global double* PHI,
  int y = n/YSTEP;
  int x = (n%YSTEP)/XSTEP;
 
+ // orientation field values in the neighbouring cells:
  double ori=Ori[n];
  double ori_xp=Ori[XP];
  double ori_xm=Ori[XM];
  double ori_yp=Ori[YP];
  double ori_ym=Ori[YM];
+
  double ori_xpyp=Ori[XPYP];
  double ori_xpym=Ori[XPYM];
  double ori_xmyp=Ori[XMYP];
  double ori_xmym=Ori[XMYM];
 
+// phase field values in the neighbouring cells:
  double phi=PHI[n];
  double phi_xp=PHI[XP];
  double phi_xm=PHI[XM];
@@ -824,18 +824,14 @@ __kernel void orientation_field_update(__global double* PHI,
  {
 /*******************************************************************
 OPTIONS:
-CASE 1: MAGGRAD MODEL WITH P(PHI) COEFFIECIONT FUNCTION
-CASE 2: MAGGRAD MODEL WITH PHI3 COEFFIECIONT FUNCTION: 4 POINT LAPLACIAN 
-CASE 3: MAGGRAD MODEL WITH PHI3 COEFFIECIONT FUNCTION: 9 POINT LAPLACIAN
-CASE 4: MAGGRAD MODEL WITH PHI4 COEFFIECIONT FUNCTION: 9 POINT LAPLACIAN
-CASE 5: MAGGRAD MODEL SIDEBRANCHING
-CASE 6: PLAPP MODEL: 4 POINT LAPLACIAN
+CASE 3: MAGGRAD MODEL: 9 POINT LAPLACIAN
+CASE 5: MAGGRAD MODEL: SIDEBRANCHING
 CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
 *******************************************************************/
 
 
 /*****************************************************************************************
-            MAGGRAD MODELL WITH PHI3 COEFFIECIONT FUNCTION 9 POINT LAPLACIAN
+            MAGGRAD MODELL WITH 9 POINT LAPLACIAN
 *****************************************************************************************/
 
   case 3:
@@ -1046,8 +1042,8 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
 __kernel void initialize_orientation_field(__global double* Ori, __global mwc64x_state_t* RandState){
   int n=get_global_id(0);
   mwc64x_state_t rng = RandState[n];
-  //Ori[n]=random_uniform(&rng);
-  Ori[n]=0.25;
+  Ori[n]=random_uniform(&rng);
+  // Ori[n]=0.25;
   RandState[n] = rng;
 }
 

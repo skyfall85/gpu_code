@@ -199,6 +199,7 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   # figure==0: just the data
   # figure==1: just the picture
   # figure==2: both of them
+
   #------------------------------------------------------
   #                     PHASE FIELD:
   #------------------------------------------------------
@@ -461,7 +462,6 @@ def main():
   
  # Init seeds:
   program.init_MWC64X(queue, (LINSIZE,), (WG_SIZE,), RandState_buffer, np.uint32(NOISE_SEED))
-  #program.init_seed(queue, (LINSIZE,), (WG_SIZE,), Seed_buffer)
 
   #Initialize the fields:
   if NEW_OR_CONTINUE==0:
