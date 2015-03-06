@@ -477,7 +477,7 @@ __kernel void phase_field_update(__global double* Phi,
                                  __global double* C,
                                  __global double* PhiNew,
                                  __global double* Ori,
-                                 __global mwc64x_state_t* RandState){
+                                 __global float* noise_array){
  int n=get_global_id(0);
 
  double c=C[n];
@@ -590,16 +590,16 @@ __kernel void phase_field_update(__global double* Phi,
 //multiply the right hand side with the mobility
  phidot*=mphi; // Noise sample
 
- double noise;
- mwc64x_state_t rng = RandState[n];
-
  // Normal noise
+ double noise;
+
+// HERE COMES THE FILTERED NOISE:
+ int stride=(XSIZE/2+1)*2;
+ int n_dash=x+stride*y;
  double PHASE_NOISE_AMPLITUDE=sqrt(PHI_NOISE_0);
- noise = PHASE_NOISE_AMPLITUDE*random_normal(&rng)*(1.0-P_PHI(phi));
+ noise = PHASE_NOISE_AMPLITUDE*noise_array[n_dash]*(1.0-P_PHI(phi));
 
 
- // Save PRNG state
- RandState[n] = rng;
 
  if (phi+(phidot)*DT>1.0) PhiNew[n]=0.99;
  else if (phi+(phidot)*DT<-0.1) PhiNew[n]=0.0;
@@ -1085,6 +1085,6 @@ __kernel void filling_noise_array(__global mwc64x_state_t* RandState, __global f
   mwc64x_state_t rng = RandState[n];
   int stride=(XSIZE/2+1)*2;
   int n_dash=x+stride*y;
-  noise_array[n_dash]=random_normal(&rng);
+  noise_array[n_dash]=(random_uniform(&rng)-0.5);
   RandState[n] = rng;
 }
