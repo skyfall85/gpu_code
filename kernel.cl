@@ -595,7 +595,7 @@ __kernel void phase_field_update(__global double* Phi,
 
  // Normal noise
  double PHASE_NOISE_AMPLITUDE=sqrt(PHI_NOISE_0);
- noise = PHASE_NOISE_AMPLITUDE*random_normal(&rng)*(1.0-P_PHI(phi))*sqrt(ADT);
+ noise = PHASE_NOISE_AMPLITUDE*random_normal(&rng)*(1.0-P_PHI(phi));
 
 
  // Save PRNG state
@@ -1020,7 +1020,7 @@ CASE 7: PLAPP MODEL: 9 POINT LAPLACIAN
  double pphi=(DLESS_M_THETA_S+(DLESS_M_THETA_L-DLESS_M_THETA_S)*(1.0-P_PHI(phi)))/DLESS_M_THETA_L;
 
  double ORIENTATION_NOISE_AMPLITUDE=sqrt(ORI_NOISE_0);
- noise = ORIENTATION_NOISE_AMPLITUDE*noise_array[n_dash]*pphi*sqrt(ADT);
+ noise = ORIENTATION_NOISE_AMPLITUDE*noise_array[n_dash]*pphi;
  double one=1.0;
  double mod1=fmod(Ori[n]+oridot*DT+noise,one);
 

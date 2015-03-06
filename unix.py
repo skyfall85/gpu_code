@@ -67,7 +67,6 @@ def create_folders_for_parameters(input_file, output_file):
                 sect_name=sec_var[key]
                 tmp_obj[sect_name][key]=value
       # replace the "."-s with E in the foldername:
-            foldername=foldername.replace(".","E")
             foldername=foldername.replace("/","div")
             foldername=foldername.replace("*","x")
             print foldername
