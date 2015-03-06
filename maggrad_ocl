@@ -101,7 +101,7 @@ def init_parameters():
     p['2D_SIMBOX']['XSTEP']= 1
     p['2D_SIMBOX']['YSTEP']= p['2D_SIMBOX']['XSIZE']
 
-    wd("Box is 2D, {}x{}".format(p['2D_SIMBOX']['XSIZE'], p['2D_SIMBOX']['YSIZE']))
+    wd("\t\t\tBox is 2D, {}x{}".format(p['2D_SIMBOX']['XSIZE'], p['2D_SIMBOX']['YSIZE']))
     del p['3D_SIMBOX']
   if p['SETUP']['DIMENSION'] == 3:
     p['3D_SIMBOX']['LINSIZE'] = p['3D_SIMBOX']['XSIZE']*p['3D_SIMBOX']['YSIZE']*p['3D_SIMBOX']['ZSIZE']
@@ -415,19 +415,23 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
 
 def print_setup():
   if MODELL==1:
-    print "\tMAGGRAD-THETA MODEL"
+    print "\t\t\tMAGGRAD-THETA MODEL"
   if MODELL==2:
-    print "\tPLAPP MODEL"
+    print "\t\t\tPLAPP MODEL"
   if ANISOTROPY==1:
-    print "\tISOTROPIC SIMULATION"
+    print "\t\t\tISOTROPIC SIMULATION"
   elif ANISOTROPY==2:
-    print "\tKINETIC ANISOTROPY"
+    print "\t\t\tKINETIC ANISOTROPY"
   elif ANISOTROPY==3:
-    print "\tSURFACE ANISOTROPY"
+    print "\t\t\tSURFACE ANISOTROPY"
 
 def print_physics():
   N=1.6090908e-1*D_10_90/(Xi*DX*1.6090908*0.1)
-  print("Number of points in the interface={}".format(N))
+  dx=DX*Xi
+  dt=DT*Xi*Xi/D_l
+  print("-------------------------------PHYSICS------------------------------")
+  print("\t\t\t dx = {} meter \n\t\t\t dt = {} sec \n\t\t\t d_10_90 = {} meter".format(dx,dt,D_10_90))
+  print("--------------------------------------------------------------------")
 
 
 
