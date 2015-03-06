@@ -94,8 +94,7 @@ def init_parameters():
           p[section][variable] = insert_vars_in_cfg(var, cfg)
 
 
-  del p['INVISIBLE_PHYSICAL_PARAMETERS']
-  del p['CONSTANTS']
+  #del p['INVISIBLE_PHYSICAL_PARAMETERS']
   # Simulation box setup:
   if p['SETUP']['DIMENSION'] == 2:
     p['2D_SIMBOX']['LINSIZE'] = p['2D_SIMBOX']['XSIZE']*p['2D_SIMBOX']['YSIZE']
@@ -185,14 +184,22 @@ def init_fields(context):
 
 def angdiff(x,y):
   #define ANGDIFF(A,B) (ABS(A-B)<ABS(1.0-ABS(A-B)) ? A-B : ( (A-B)>0.0 ? (A-B)-1.0 : (ABS(A-B)<0.5 ? B-A : 1.0+(A-B)) )  )
-  if abs(x-y)<abs(1.0-abs(x-y)):
+  if abs(x-y)<=abs(1.0-abs(x-y)):
     return x-y
-  elif (x-y)>0.0:
+  elif (x-y)>0.5:
     return (x-y)-1.0
-  elif abs(x-y)<0.5:
-    return (y-x)
   else:
     return 1.0+(x-y)
+
+def maggrad(ori_data,m_x,m_y):
+  return ((2.0/3.0)*math.sqrt(np.square(0.5*(angdiff(ori_data[m_x+1,m_y],ori_data[m_x,m_y])
+                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x-1,m_y])))
+                                      +np.square(0.5*(angdiff(ori_data[m_x,m_y+1],ori_data[m_x,m_y])
+                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x,m_y-1]))))
+                                  +(1.0/3.0)*math.sqrt(np.square(0.25*np.sqrt(2)*(angdiff(ori_data[m_x+1,m_y+1],ori_data[m_x,m_y])+
+                                                                                angdiff(ori_data[m_x,m_y],ori_data[m_x-1,m_y-1])))
+                                                      +np.square(0.25*np.sqrt(2)*(angdiff(ori_data[m_x+1,m_y-1],ori_data[m_x,m_y])+
+                                                                                angdiff(ori_data[m_x,m_y],ori_data[m_x-1,m_y+1])))))
 
 
 def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
@@ -329,17 +336,14 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   maggrad_array=maggrad_array.reshape(s)
   for m_x in range(1,maggrad_sizex+1,1):
     for m_y in range(1,maggrad_sizey+1,1):
-      maggrad_array[m_x-1,m_y-1]=(math.sqrt(np.exp2(0.5*(angdiff(ori_data[m_x+1,m_y],ori_data[m_x,m_y])
-                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x-1,m_y])))
-                                      +np.exp2(0.5*(angdiff(ori_data[m_x,m_y+1],ori_data[m_x,m_y])
-                                                   +angdiff(ori_data[m_x,m_y],ori_data[m_x,m_y-1])))))
+      maggrad_array[m_x-1,m_y-1]=maggrad(ori_data,m_x,m_y)
   maggrad_rgb=np.empty(3*maggrad_sizex*maggrad_sizey).astype(np.float16)
   s=(maggrad_sizex,maggrad_sizey,3)
   maggrad_rgb=maggrad_rgb.reshape(s)
   maggrad_array_max=np.amax(maggrad_array)
   maggrad_array_min=np.amin(maggrad_array)
   max_reciprok=1.0/(maggrad_array_max-maggrad_array_min)
-  print('maggrad_array_max: {}'.format(maggrad_array_max))
+  # print('maggrad_array_max: {} and min {}'.format(maggrad_array_max,maggrad_array_min))
   maggrad_array=(np.array(maggrad_array)-maggrad_array_min)*max_reciprok
   maggrad_rgb[:,:,0]=(1.0-maggrad_array)
   maggrad_rgb[:,:,1]=(1.0-maggrad_array)
@@ -421,6 +425,9 @@ def print_setup():
   elif ANISOTROPY==3:
     print "\tSURFACE ANISOTROPY"
 
+def print_physics():
+  N=1.6090908e-1*D_10_90/(Xi*DX*1.6090908*0.1)
+  print("Number of points in the interface={}".format(N))
 
 
 
@@ -441,6 +448,7 @@ def main():
   with open('kernel_src.cl', 'w') as f: f.write(program_src)
 
   print_setup()
+  print_physics()
 
  # Init platform, device, queue
   platform = cl.get_platforms()[0]
@@ -525,11 +533,9 @@ def main():
 
    active_buffer=1-active_buffer
 
-   if step<100000 and step%5000==0:
-    export_field(queue,'pf_','cf_','of_',figure=2,step=step)
 
-   elif step%PRINT_STEPS==0:
-    export_field(queue,'pf_','cf_','of_',figure=2,step=step)
+   if step%PRINT_STEPS==0:
+    export_field(queue,'pf_','cf_','of_',figure=1,step=step)
 
   export_field(queue,'pf_final','cf_final','of_final',figure=1,step=step,final=1)
   print "Total time of the simulation= {}".format(time.time()-start_time)
