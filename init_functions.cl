@@ -15,7 +15,7 @@ __kernel void insert_one_nucleus(__global double* Phi, __global double* C,
  double ori_ref;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  rx2=(x-X0)*(x-X0);
  ry2=(y-Y0)*(y-Y0);
@@ -57,7 +57,7 @@ __kernel void insert_four_nucleus(__global double* Phi, __global double* C,
  double ori_ref;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  double X1,X2,X3,X4;
  double Y1,Y2,Y3,Y4;
@@ -167,7 +167,7 @@ __kernel void insert_four_rectangles(__global double* Phi, __global double* C,
  double ori=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
 
  if (x<=XSIZE*0.5 && y<=YSIZE*0.5) ori=0.1;
@@ -194,7 +194,7 @@ __kernel void insert_four_rectangles_cross(__global double* Phi, __global double
  double ori=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
 
  if (x<=y && y<=YSIZE-x) ori=0.1;
@@ -224,11 +224,11 @@ __kernel void insert_two_rectangles(__global double* Phi, __global double* C,
  double ori=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
 
- if (x<=XSIZE*0.5) ori=0.3;
- if (x>XSIZE*0.5 ) ori=0.7;
+ if (y<=YSIZE*0.5) ori=0.3;
+ if (y>YSIZE*0.5 ) ori=0.7;
  phi=0.7;
  c=C_0;
 
@@ -251,7 +251,7 @@ __kernel void insert_two_rectangles_noise_between(__global double* Phi, __global
  RandState[n] = rng;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  
  if (x<=XSIZE*0.2) {ori=0.3;phi=0.7;}
@@ -279,7 +279,7 @@ __kernel void insert_rectangle(__global double* Phi, __global double* C,
  RandState[n] = rng;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
  
  
  if ((X0-A0)<x && x<=(X0+A0) && (Y0-A0)<y && y<=(Y0+A0)) 
@@ -303,7 +303,7 @@ __kernel void insert_orientation_defect_conf(__global double* Phi, __global doub
  RandState[n] = rng;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  double theta2=0.25+epsilon/2.0;
  double theta1=0.75-epsilon/2.0;
@@ -361,7 +361,7 @@ __kernel void insert_orientation_defect_conf_stepfun(__global double* Phi, __glo
  double ori=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  double theta2=0.25+epsilon/2.0;
  double theta1=0.75-epsilon/2.0;
@@ -410,7 +410,7 @@ __kernel void insert_orientation_defect_conf_stepfun_cross(__global double* Phi,
  double ori=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  double theta2=0.25+epsilon/2.0;
  double theta1=0.75-epsilon/2.0;
@@ -460,7 +460,7 @@ __kernel void insert_N_grains_fullfilling_lattice(__global double* Phi, __global
  double c=0.0;
 
  y = n/YSTEP;
- x = (n%YSTEP)/XSTEP;
+ x = (n%YSTEP);
 
  double dx=x-0.5*XSIZE;
  double dy=y-0.5*YSIZE;

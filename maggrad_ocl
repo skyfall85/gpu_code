@@ -1,12 +1,5 @@
 #!/usr/local/bin/python2.7
 
-# 2013-11-07: A kod mukodik, a parameterek jok, de egyelore csak az orientacios mezot tudja inicializalni
-#             idoleptetes meg abszolut nincs benne. Sem kiiratas.
-#            1: Most mar be tud rakni 1 db kort, de az idolepes meg nem megy.
-
-
-
-
 from __future__ import division
 import argparse
 import pprint
@@ -99,7 +92,6 @@ def init_parameters():
 
 
   del p['INVISIBLE_PHYSICAL_PARAMETERS']
-  del p['CONSTANTS']
   # Simulation box setup:
   if p['SETUP']['DIMENSION'] == 2:
     p['2D_SIMBOX']['LINSIZE'] = p['2D_SIMBOX']['XSIZE']*p['2D_SIMBOX']['YSIZE']
@@ -165,20 +157,26 @@ def init_fields(context):
     if NEW_OR_CONTINUE==0:
       Field=    np.empty(LINSIZE).astype(np.float64)
       Phi_buffer  = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
-      C_buffer    = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
       Ori_buffer  = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
+      C_buffer    = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
+      
 
     elif NEW_OR_CONTINUE==1:
       Field=np.load("pf_final.npy")
       Phi_buffer=cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=Field)
-      Field=np.load("cf_final.npy")
-      C_buffer=cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=Field)
       Field=np.load("of_final.npy")
       Ori_buffer=cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=Field)
+      if ONE_OR_TWO_COMP==2:
+        Field=np.load("cf_final.npy")
+        C_buffer=cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=Field)
+      elif ONE_OR_TWO_COMP==1:
+        C_buffer=cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=Field)
+      
 
     PhiNew_buffer  = cl.Buffer(context, cl.mem_flags.READ_WRITE, Field.nbytes)
     OriNew_buffer  = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
-    CNew_buffer    = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
+    if ONE_OR_TWO_COMP==2:
+      CNew_buffer    = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
     #Seed_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE, 4*LINSIZE)
     RandState_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE, 2*4*LINSIZE)  # Two uint32 for every pixel.
     Jx_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE,  Field.nbytes)
@@ -189,7 +187,7 @@ def init_fields(context):
 
 
 
-def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
+def export_field(queue,file0_pf,file0_cf,file0_of,figure,final,step=""):
   # figure==0: just the data
   # figure==1: just the picture
   # figure==2: both of them
@@ -201,7 +199,7 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   if figure==0 or figure==2:
     file_pf=str(file0_pf)
     if final==0:
-      file_pf=file_pf+str(step)+".npy"
+      file_pf=file_pf+format(step,'07d')+".npy"
     elif final==1:
       file_pf=file_pf+".npy"
 
@@ -213,14 +211,14 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
 
     if EXPORT_FORMAT==2:
       if final==0:
-        np.save(file_pf,np.reshape(Field,(XSIZE,YSIZE)).astype(np.float16))
+        np.save(file_pf,np.reshape(Field,(XSIZE,YSIZE),order='F'))
       elif final==1:
-        np.save(file_pf,np.reshape(Field,(XSIZE,YSIZE)))
+        np.save(file_pf,np.reshape(Field,(XSIZE,YSIZE),order='F'))
 
 
   #----------------------FIGURE--------------------------
   if figure==1 or figure==2:
-    phi_data0=Field.reshape((XSIZE,YSIZE))
+    phi_data0=Field.reshape((XSIZE,YSIZE),order='F')
     s=(XSIZE,YSIZE,3)
     phi_rgb=np.empty(LINSIZE*3).astype(np.float16)
     phi_rgb=phi_rgb.reshape(s)
@@ -235,11 +233,11 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     # fig=plt.figure(figsize=(5,5))
     # fig_plot = fig.add_subplot(1,1,1)
     # phi_image=fig_plot.imshow(phi_rgb)
-    # out_file="phi_"+str(step)+".png"
+    # out_file="phi_"+format(step,'07d')+".png"
     # fig.savefig(out_file)
     # plt.close(fig)
 
-    out_file="phi_"+str(step)+".tiff"
+    out_file="phi_"+format(step,'07d')+".tiff"
     img=Image.fromarray((255*phi_rgb).astype(np.uint8))
     img.save(out_file)
     # free unused memory space:
@@ -258,7 +256,7 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
   if figure==0 or figure==2:
     file_of=str(file0_of)
     if final==0:
-      file_of=file_of+str(step)+".npy"
+      file_of=file_of+format(step,'07d')+".npy"
     elif final==1:
       file_of=file_of+".npy"
 
@@ -270,13 +268,13 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
 
     if EXPORT_FORMAT==2:
       if final==0:
-        np.save(file_of,np.reshape(Field,(XSIZE,YSIZE)).astype(float16))
+        np.save(file_of,np.reshape(Field,(XSIZE,YSIZE),order='F'))
       elif final==1:
-        np.save(file_of,np.reshape(Field,(XSIZE,YSIZE)))
+        np.save(file_of,np.reshape(Field,(XSIZE,YSIZE),order='F'))
 
   #----------------------FIGURE--------------------------
   if figure==1 or figure==2:
-    ori_data=Field.reshape((XSIZE,YSIZE))
+    ori_data=Field.reshape((XSIZE,YSIZE),order='F')
     s=(XSIZE,YSIZE,3)
     ori_rgb=np.empty(3*LINSIZE).astype(np.float16)
     ori_rgb=ori_rgb.reshape(s)
@@ -300,11 +298,11 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     # fig=plt.figure(figsize=(5,5))
     # fig_plot = fig.add_subplot(1,1,1)
     # ori_image=fig_plot.imshow(ori_rgb)
-    # out_file="ori_"+str(step)+".png"
+    # out_file="ori_"+format(step,'07d')+".png"
     # fig.savefig(out_file)
     # plt.close(fig)
 
-    out_file="ori_"+str(step)+".tiff"
+    out_file="ori_"+format(step,'07d')+".tiff"
     img=Image.fromarray((255*ori_rgb).astype(np.uint8))
     img.save(out_file)
     # free memory space of unused variables:
@@ -321,7 +319,7 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     if figure==0 or figure==2:
       file_cf=str(file0_cf)
       if final==0:
-        file_cf=file_cf+str(step)+".npy"
+        file_cf=file_cf+format(step,'07d')+".npy"
       elif final==1:
         file_cf=file_cf+".npy"
 
@@ -333,13 +331,13 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
 
         if EXPORT_FORMAT==2:
           if final==0:
-            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)).astype(float16))
+            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE),order='F').astype(float16))
           elif final==1:
-            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE)))
+            np.save(file_cf,np.reshape(Field,(XSIZE,YSIZE),order='F'))
 
   #----------------------FIGURE--------------------------
     if figure==1 or figure==2:
-      conc_data=Field.reshape((XSIZE,YSIZE))
+      conc_data=Field.reshape((XSIZE,YSIZE),order='F')
       s=(XSIZE,YSIZE,3)
       conc_rgb=np.empty(LINSIZE*3).astype(np.float16)
       conc_rgb=conc_rgb.reshape(s)
@@ -355,12 +353,12 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,step="",final=0):
     # fig=plt.figure(figsize=(5,5))
     # fig_plot = fig.add_subplot(1,1,1)
     # conc_image=fig_plot.imshow(conc_rgb)
-    # out_file="conc_"+str(step)+".png"
+    # out_file="conc_"+format(step,'07d')+".png"
     # fig.savefig(out_file)
     # fig.clf()
     # plt.close(fig)
 
-      out_file="conc_"+str(step)+".tiff"
+      out_file="conc_"+format(step,'07d')+".tiff"
       img=Image.fromarray((255*conc_rgb).astype(np.uint8))
       img.save(out_file)
 
@@ -381,6 +379,95 @@ def print_setup():
     print "\tSURFACE ANISOTROPY"
 
 
+
+def init_shape_config(program,queue):
+    number_of_nucleus=0
+    if number_of_nucleus>0:
+      # initialise the nucleus:
+      x0=np.float64(0.5*XSIZE)
+      y0=np.float64(0.5*YSIZE)
+      radius=np.float64(5.0)
+      start_orientation_1=np.float64(0.7)
+      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
+
+    if number_of_nucleus==2:
+      x1=np.float64(384.0)
+      y1=np.float64(384.0)
+      radius=np.float64(30.0)
+      start_orientation_2=np.float64(0.7)
+      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x1,y1,radius,start_orientation_2,RandState_buffer)
+      if INITIAL_SHAPE==0:
+        for i_ind in range(0,32,1):
+          for j_ind in range(0,32,1):
+            x0=np.float64(16+32*i_ind)
+            y0=np.float64(16+32*j_ind)
+            radius=np.float64(5.0)
+            start_orientation_1=np.float64(random.uniform(0,1))
+            program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
+
+    if INITIAL_SHAPE==1:
+      program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
+    if INITIAL_SHAPE==2:
+      x0=np.float64(0.5*XSIZE)
+      y0=np.float64(0.5*YSIZE)
+      radius=np.float64(5.0)
+      start_orientation_1=np.float64(0.25)
+      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
+
+    if INITIAL_SHAPE==3:
+      radius=np.float64(20.0)
+      program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
+
+    if INITIAL_SHAPE==4:
+      program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
+
+    if INITIAL_SHAPE==5:
+      program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
+
+    if INITIAL_SHAPE==6:
+      num_of_nn=NUM_OF_NEIGHBOUR
+      x0=np.float64(0.5*XSIZE)
+      y0=np.float64(0.5*YSIZE)
+      radius=np.float64(5.0)
+      dist_nn=50.0
+      start_orientation_1=np.float64(0.25)
+      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
+      for ind_nn in range(0,num_of_nn):
+        x0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.cos(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
+        y0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.sin(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
+        start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
+        program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
+
+    if INITIAL_SHAPE==7:
+      random.seed(10)
+      for i_ind in range(0,32,1):
+        for j_ind in range(0,32,1):
+          x0=np.float64(16+32*i_ind)
+          y0=np.float64(16+32*j_ind)
+          radius=np.float64(16.0)
+          start_orientation_1=np.float64(random.uniform(0,1))
+          program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
+
+
+    if INITIAL_SHAPE==8:
+      program.insert_four_rectangles_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
+
+    if INITIAL_SHAPE==9:
+      epsilon=np.float64(EPSILON)
+      dx0=np.float64(DX0)
+      program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,RandState_buffer,epsilon,dx0)
+
+    if INITIAL_SHAPE==10:
+      epsilon=np.float64(EPSILON)
+      program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
+
+    if INITIAL_SHAPE==11:
+      epsilon=np.float64(EPSILON)
+      program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
+
+    if INITIAL_SHAPE==12:
+      epsilon=np.float64(EPSILON)
+      program.insert_N_grains_fullfilling_lattice(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,np.float64(NUM_OF_NEIGHBOUR),epsilon)
 
 
 def main():
@@ -426,99 +513,12 @@ def main():
     program.initialize_orientation_field(queue,(LINSIZE,),(WG_SIZE,),Ori_buffer,RandState_buffer)
     program.initialize_phase_field(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer)
     program.initialize_concentration_field(queue,(LINSIZE,),(WG_SIZE,),C_buffer)
+
+  init_shape_config(program,queue)
     
-  if INITIAL_SHAPE==0:
-    for i_ind in range(0,32,1):
-      for j_ind in range(0,32,1):
-        x0=np.float64(16+32*i_ind)
-        y0=np.float64(16+32*j_ind)
-        radius=np.float64(5.0)
-        start_orientation_1=np.float64(random.uniform(0,1))
-        program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if INITIAL_SHAPE==1:
-    program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
-  if INITIAL_SHAPE==2:
-    x0=np.float64(0.5*XSIZE)
-    y0=np.float64(0.5*YSIZE)
-    radius=np.float64(5.0)
-    start_orientation_1=np.float64(0.25)
-    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if INITIAL_SHAPE==3:
-    radius=np.float64(20.0)
-    program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
-
-  if INITIAL_SHAPE==4:
-  	program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
-
-  if INITIAL_SHAPE==5:
-  	program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
-
-  if INITIAL_SHAPE==6:
-    num_of_nn=NUM_OF_NEIGHBOUR
-    x0=np.float64(0.5*XSIZE)
-    y0=np.float64(0.5*YSIZE)
-    radius=np.float64(5.0)
-    dist_nn=50.0
-    start_orientation_1=np.float64(0.25)
-    program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-    for ind_nn in range(0,num_of_nn):
-      x0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.cos(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
-      y0=np.float64(0.5*XSIZE)+math.floor(dist_nn*math.sin(math.pi*2.0*ind_nn/(np.float64(num_of_nn))))
-      start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
-      program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
-
-  if INITIAL_SHAPE==7:
-    random.seed(10)
-    for i_ind in range(0,32,1):
-      for j_ind in range(0,32,1):
-        x0=np.float64(16+32*i_ind)
-        y0=np.float64(16+32*j_ind)
-        radius=np.float64(16.0)
-        start_orientation_1=np.float64(random.uniform(0,1))
-        program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
-
-
-  if INITIAL_SHAPE==8:
-    program.insert_four_rectangles_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
-
-  if INITIAL_SHAPE==9:
-    epsilon=np.float64(EPSILON)
-    dx0=np.float64(DX0)
-    program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,RandState_buffer,epsilon,dx0)
-
-  if INITIAL_SHAPE==10:
-    epsilon=np.float64(EPSILON)
-    program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
-
-  if INITIAL_SHAPE==11:
-    epsilon=np.float64(EPSILON)
-    program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
-
-  if INITIAL_SHAPE==12:
-    epsilon=np.float64(EPSILON)
-    program.insert_N_grains_fullfilling_lattice(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,np.float64(NUM_OF_NEIGHBOUR),epsilon)
-
-  number_of_nucleus=0
-  if number_of_nucleus>0:
-   # initialise the nucleus:
-   x0=np.float64(0.5*XSIZE)
-   y0=np.float64(0.5*YSIZE)
-   radius=np.float64(5.0)
-   start_orientation_1=np.float64(0.7)
-   program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
-
-  if number_of_nucleus==2:
-   x1=np.float64(384.0)
-   y1=np.float64(384.0)
-   radius=np.float64(30.0)
-   start_orientation_2=np.float64(0.7)
-   program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x1,y1,radius,start_orientation_2,RandState_buffer)
-
 
  # write out initial configuration:
-  export_field(queue,'pf_init','cf_init','of_init',figure=1,step=0)
+  export_field(queue,'pf_init','cf_init','of_init',figure=1,final=0,step=0)
 
   active_buffer=1
 
@@ -531,7 +531,10 @@ def main():
 
    if active_buffer==1:
     args_phi=(Phi_buffer, C_buffer, PhiNew_buffer, Ori_buffer,RandState_buffer)
-    args_c=(Phi_buffer,C_buffer,CNew_buffer, Jx_buffer, Jy_buffer)
+    if ONE_OR_TWO_COMP==1:
+      args_c=(Phi_buffer,C_buffer,C_buffer, Jx_buffer, Jy_buffer)
+    elif ONE_OR_TWO_COMP==2:
+      args_c=(Phi_buffer,C_buffer,CNew_buffer, Jx_buffer, Jy_buffer)
     args_ori=(Phi_buffer, Ori_buffer, OriNew_buffer,RandState_buffer)
     args_jx=(Phi_buffer,Jx_buffer,C_buffer)
     args_jy=(Phi_buffer,Jy_buffer,C_buffer)
@@ -539,14 +542,17 @@ def main():
 
    else:
     if ONE_OR_TWO_COMP==1:
-      args_phi=(PhiNew_buffer, CNew_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
-      args_c=(PhiNew_buffer,CNew_buffer,C_buffer, Jx_buffer, Jy_buffer)
+      args_phi=(PhiNew_buffer, C_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
+      args_c=(PhiNew_buffer,C_buffer,C_buffer, Jx_buffer, Jy_buffer)
+      args_jx=(PhiNew_buffer,Jx_buffer,C_buffer)
+      args_jy=(PhiNew_buffer,Jy_buffer,C_buffer)
     elif ONE_OR_TWO_COMP==2:
       args_phi=(PhiNew_buffer, C_buffer, Phi_buffer, OriNew_buffer,RandState_buffer)
       args_c=(PhiNew_buffer,C_buffer,C_buffer, Jx_buffer, Jy_buffer)
+      args_jx=(PhiNew_buffer,Jx_buffer,CNew_buffer)
+      args_jy=(PhiNew_buffer,Jy_buffer,CNew_buffer)
     args_ori=(PhiNew_buffer, OriNew_buffer, Ori_buffer,RandState_buffer)
-    args_jx=(PhiNew_buffer,Jx_buffer,CNew_buffer)
-    args_jy=(PhiNew_buffer,Jy_buffer,CNew_buffer)
+
 
    program.phase_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_phi)
    program.orientation_field_update(queue,(LINSIZE,),(WG_SIZE,), *args_ori)
@@ -558,20 +564,11 @@ def main():
 
    active_buffer=1-active_buffer
 
-   if step<100000 and step%5000==0:
-    export_field(queue,'pf_','cf_','of_',figure=2,step=step)
+   if step%PRINT_STEPS==0:
+    export_field(queue,'pf_','cf_','of_',figure=2,final=0,step=step)
 
-   elif step%PRINT_STEPS==0:
-    export_field(queue,'pf_','cf_','of_',figure=2,step=step)
 
-  # if step%2==1:
-  #  cl.enqueue_read_buffer(queue,OriNew_buffer, Ori).wait()
-  #  cl.enqueue_read_buffer(queue,PhiNew_buffer, Phi).wait()
-  #  cl.enqueue_read_buffer(queue,CNew_buffer, C).wait()
-  #  export_field('pf_','cf_','of_',Phi,Ori,C,step)
-  # Read the values of the orientation field:
-
-  export_field(queue,'pf_final','cf_final','of_final',figure=1,step=step,final=1)
+  export_field(queue,'pf_final','cf_final','of_final',figure=0,final=1,step=step)
   print "Total time of the simulation= {}".format(time.time()-start_time)
 
 
