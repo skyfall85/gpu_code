@@ -735,7 +735,8 @@ __kernel void phase_field_update(__global double* Phi,
  // Save PRNG state
  RandState[n] = rng;
 
- if (phi+(phidot)*DT<-0.1 || phi+(phidot)*DT>1.0) PhiNew[n]=0.99;
+ if (phi+(phidot)*DT>1.1) PhiNew[n]=0.99;
+ else if (phi+(phidot)*DT<-0.1) PhiNew[n]=0.0;
  else PhiNew[n]=phi+(phidot)*DT+noise;
 
 }

@@ -229,7 +229,7 @@ __kernel void insert_two_rectangles(__global double* Phi, __global double* C,
 
  if (y<=YSIZE*0.5) ori=0.3;
  if (y>YSIZE*0.5 ) ori=0.7;
- phi=0.7;
+ phi=1.0;
  c=C_0;
 
  Phi[n]=phi;
