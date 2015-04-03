@@ -396,7 +396,7 @@ def init_shape_config(program,queue):
       radius=np.float64(30.0)
       start_orientation_2=np.float64(0.7)
       program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x1,y1,radius,start_orientation_2,RandState_buffer)
-      if INITIAL_SHAPE==0:
+      if INITIAL_SHAPE==1:
         for i_ind in range(0,32,1):
           for j_ind in range(0,32,1):
             x0=np.float64(16+32*i_ind)
@@ -405,26 +405,27 @@ def init_shape_config(program,queue):
             start_orientation_1=np.float64(random.uniform(0,1))
             program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
 
-    if INITIAL_SHAPE==1:
-      program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
     if INITIAL_SHAPE==2:
+      program.insert_four_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
+    
+    if INITIAL_SHAPE==3:
       x0=np.float64(0.5*XSIZE)
       y0=np.float64(0.5*YSIZE)
       radius=np.float64(5.0)
       start_orientation_1=np.float64(0.25)
       program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation_1,RandState_buffer)
 
-    if INITIAL_SHAPE==3:
+    if INITIAL_SHAPE==4:
       radius=np.float64(20.0)
       program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
-    if INITIAL_SHAPE==4:
+    if INITIAL_SHAPE==5:
       program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
 
-    if INITIAL_SHAPE==5:
+    if INITIAL_SHAPE==6:
       program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
-    if INITIAL_SHAPE==6:
+    if INITIAL_SHAPE==7:
       num_of_nn=NUM_OF_NEIGHBOUR
       x0=np.float64(0.5*XSIZE)
       y0=np.float64(0.5*YSIZE)
@@ -438,7 +439,7 @@ def init_shape_config(program,queue):
         start_orientation=start_orientation_1+np.float64(ind_nn+1.0)/np.float64(num_of_nn+1.0)
         program.insert_one_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0,radius,start_orientation,RandState_buffer)
 
-    if INITIAL_SHAPE==7:
+    if INITIAL_SHAPE==8:
       random.seed(10)
       for i_ind in range(0,32,1):
         for j_ind in range(0,32,1):
@@ -449,26 +450,31 @@ def init_shape_config(program,queue):
           program.insert_rectangle(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, x0,y0, radius,start_orientation_1,RandState_buffer)
 
 
-    if INITIAL_SHAPE==8:
+    if INITIAL_SHAPE==9:
       program.insert_four_rectangles_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)
 
-    if INITIAL_SHAPE==9:
+    if INITIAL_SHAPE==10:
       epsilon=np.float64(EPSILON)
       dx0=np.float64(DX0)
       program.insert_orientation_defect_conf(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,RandState_buffer,epsilon,dx0)
 
-    if INITIAL_SHAPE==10:
+    if INITIAL_SHAPE==11:
       epsilon=np.float64(EPSILON)
       program.insert_orientation_defect_conf_stepfun(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
 
-    if INITIAL_SHAPE==11:
+    if INITIAL_SHAPE==12:
       epsilon=np.float64(EPSILON)
       program.insert_orientation_defect_conf_stepfun_cross(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,epsilon)
 
-    if INITIAL_SHAPE==12:
+    if INITIAL_SHAPE==13:
       epsilon=np.float64(EPSILON)
       program.insert_N_grains_fullfilling_lattice(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,np.float64(NUM_OF_NEIGHBOUR),epsilon)
 
+    if INITIAL_SHAPE==14:
+      program.insert_two_grains(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer,C_buffer,Ori_buffer)    
+
+    if INITIAL_SHAPE==15:
+      program.insert_cicle_inside_grain(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer,C_buffer,Ori_buffer)
 
 def main():
  # define necessery variables:

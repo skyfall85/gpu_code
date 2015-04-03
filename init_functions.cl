@@ -267,6 +267,51 @@ __kernel void insert_two_rectangles_noise_between(__global double* Phi, __global
  
 }
 
+
+__kernel void insert_two_grains(__global double* Phi, __global double* C,
+ __global double* Ori){
+ int n=get_global_id(0); 
+ int x,y;
+ double phi=0.0;
+ double c=0.0;
+ double ori=0.0;
+
+ y = n/YSTEP;
+ x = (n%YSTEP);
+ double x0=(x-XSIZE*0.5)*DX;
+ 
+ c=C_0;
+
+ Phi[n]=1.0-1.0/(23068.0*(x0)*(x0)+1.166);
+ C[n]=c;
+ Ori[n]=0.5+(tanh((x0)*891))*0.175;
+ 
+}
+
+
+__kernel void insert_cicle_inside_grain(__global double* Phi, __global double* C,
+ __global double* Ori){
+ int n=get_global_id(0); 
+ int x,y;
+ double R=30;
+ double u=XSIZE*0.5;
+ double v=YSIZE*0.5;
+
+
+ y = n/YSTEP;
+ x = (n%YSTEP);
+ double x0=(x-XSIZE*0.5)*DX;
+
+ double r=sqrt((x-u)*(x-u)+(y-v)*(y-v));
+ double r0=DX*(r-R); 
+ 
+ Phi[n]=1.0-1.0/(23068.0*(r0)*(r0)+1.166);
+ C[n]=0.0;
+ Ori[n]=0.5+(tanh((r0)*891))*0.175;
+ 
+}
+
+
 __kernel void insert_rectangle(__global double* Phi, __global double* C,
  __global double* Ori, const double X0, const double Y0, const double A0,const double start_orientation, __global mwc64x_state_t* RandState){
  int n=get_global_id(0); 
