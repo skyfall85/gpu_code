@@ -420,7 +420,8 @@ def init_shape_config(program,queue):
       program.insert_four_nucleus(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)
 
     if INITIAL_SHAPE==5:
-      program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer)  
+      Dtheta=np.float64(0.01*DTHETA)
+      program.insert_two_rectangles(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer,Dtheta)  
 
     if INITIAL_SHAPE==6:
       program.insert_two_rectangles_noise_between(queue,(LINSIZE,),(WG_SIZE,),Phi_buffer, C_buffer, Ori_buffer, radius,RandState_buffer)

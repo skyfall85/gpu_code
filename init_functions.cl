@@ -216,7 +216,7 @@ __kernel void insert_four_rectangles_cross(__global double* Phi, __global double
 
 
 __kernel void insert_two_rectangles(__global double* Phi, __global double* C,
- __global double* Ori){
+ __global double* Ori, const double Dtheta){
  int n=get_global_id(0); 
  int x,y;
  double phi=0.0;
@@ -227,8 +227,8 @@ __kernel void insert_two_rectangles(__global double* Phi, __global double* C,
  x = (n%YSTEP);
 
 
- if (y<=YSIZE*0.5) ori=0.3;
- if (y>YSIZE*0.5 ) ori=0.7;
+ if (y<=YSIZE*0.5) ori=0.5-0.5*dtheta;
+ if (y>YSIZE*0.5 ) ori=0.5+0.5*dtheta;
  phi=1.0;
  c=C_0;
 
