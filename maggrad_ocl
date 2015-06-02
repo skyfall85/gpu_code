@@ -279,7 +279,7 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,final,step=""):
     ori_rgb=np.empty(3*LINSIZE).astype(np.float16)
     ori_rgb=ori_rgb.reshape(s)
 
-    ori_rgb[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0)),0]=3.0*(1.0/3.0-ori_data[np.logical_and(ori_data>0.0=,ori_data<=(1.0/3.0))])
+    ori_rgb[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0)),0]=3.0*(1.0/3.0-ori_data[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0))])
     ori_rgb[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0)),1]=0.0
     ori_rgb[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0)),2]=3.0*ori_data[np.logical_and(ori_data>=0.0,ori_data<=(1.0/3.0))]
 
