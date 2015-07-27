@@ -366,6 +366,11 @@ def export_field(queue,file0_pf,file0_cf,file0_of,figure,final,step=""):
       del conc_rgb
       del c_red
 
+  #     evaluating the grain size distribution, and the defects:
+  if (step>50000 and EVAL==1):
+    cmd="./eval.sh"
+    os.system(cmd)
+
 def print_setup():
   if MODELL==1:
     print "\tMAGGRAD-THETA MODEL"
